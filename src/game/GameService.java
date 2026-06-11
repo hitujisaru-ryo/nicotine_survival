@@ -10,10 +10,13 @@ public class GameService {
 	private Random random = new Random();
 
 	public void explore(GameState gameState, ArrayList<Product> products) {
+		if (gameState.isGameFinished()) {
+			return;
+		}
+
 		gameState.advanceAction();
 
-		if (gameState.isGameClear()) {
-			gameState.setMessage("給料日が来た！ゲームクリア！");
+		if (gameState.isGameFinished()) {
 			return;
 		}
 
@@ -27,6 +30,10 @@ public class GameService {
 	}
 
 	public void pachinko(GameState gameState) {
+		if (gameState.isGameFinished()) {
+			return;
+		}
+
 		if (gameState.getMoney() < 100) {
 			gameState.setMessage("お金が足りない");
 			return;
@@ -34,8 +41,7 @@ public class GameService {
 
 		gameState.advanceAction();
 
-		if (gameState.isGameClear()) {
-			gameState.setMessage("給料日が来た！ゲームクリア！");
+		if (gameState.isGameFinished()) {
 			return;
 		}
 
@@ -49,6 +55,10 @@ public class GameService {
 	}
 
 	public void smoke(GameState gameState, int productId) {
+		if (gameState.isGameFinished()) {
+			return;
+		}
+
 		InventoryItem targetItem = null;
 
 		for (InventoryItem item : gameState.getInventory()) {
@@ -73,8 +83,7 @@ public class GameService {
 			gameState.getInventory().remove(targetItem);
 		}
 
-		if (gameState.isGameClear()) {
-			gameState.setMessage("給料日が来た！ゲームクリア！");
+		if (gameState.isGameFinished()) {
 			return;
 		}
 

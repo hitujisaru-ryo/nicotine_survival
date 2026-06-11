@@ -6,11 +6,14 @@ import bean.Product;
 
 public class GameState {
 
+	private static final String INITIAL_MESSAGE = "ニコチン・サバイバル開始";
+
 	private int money = 0;
 	private int nicotine = 100;
 	private int day = 1;
 	private int actionCount = 0;
-	private String message = "ゲーム開始";
+	private boolean gameOver = false;
+	private String message = INITIAL_MESSAGE;
 	private ArrayList<InventoryItem> inventory = new ArrayList<InventoryItem>();
 
 	public int getMoney() {
@@ -74,12 +77,26 @@ public class GameState {
 	}
 
 	public void advanceAction() {
+		if (isGameFinished()) {
+			return;
+		}
+
 		actionCount++;
 		decreaseNicotine(5);
+
+		if (nicotine == 0) {
+			gameOver = true;
+			message = "ニコチン切れで動けなくなった...";
+			return;
+		}
 
 		if (actionCount >= 20) {
 			day++;
 			actionCount = 0;
+		}
+
+		if (isGameClear()) {
+			message = "給料日が来た！5日間生き延びた！";
 		}
 	}
 
@@ -88,7 +105,15 @@ public class GameState {
 	}
 
 	public boolean isGameClear() {
-		return day >= 6;
+		return !gameOver && day >= 6;
+	}
+
+	public boolean isGameOver() {
+		return gameOver;
+	}
+
+	public boolean isGameFinished() {
+		return isGameClear() || isGameOver();
 	}
 
 	public void setMessage(String message) {
@@ -112,5 +137,15 @@ public class GameState {
 				product.getName(),
 				product.getNumberOfPieces(),
 				product.getNicotine()));
+	}
+
+	public void reset() {
+		money = 0;
+		nicotine = 100;
+		day = 1;
+		actionCount = 0;
+		gameOver = false;
+		message = INITIAL_MESSAGE;
+		inventory.clear();
 	}
 }

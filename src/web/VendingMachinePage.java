@@ -67,6 +67,7 @@ public class VendingMachinePage {
 		html.append("<div class=\"product-grid\">");
 
 		for (Product product : products) {
+			boolean gameFinished = gameState.isGameFinished();
 			boolean soldOut = product.getQuantity() == 0;
 			boolean shortage = gameState.getMoney() < product.getPrice();
 
@@ -93,7 +94,10 @@ public class VendingMachinePage {
 			html.append("<div class=\"product-info\"><span class=\"label\">数量</span><span>")
 					.append(product.getQuantity()).append("</span></div>");
 
-			if (soldOut) {
+			if (gameFinished) {
+				html.append("<span class=\"finished-label\">ゲーム終了</span>");
+				html.append("<button class=\"purchase-button\" type=\"button\" disabled>購入できません</button>");
+			} else if (soldOut) {
 				html.append("<span class=\"sold-out-label\">売り切れ</span>");
 				html.append("<button class=\"purchase-button\" type=\"button\" disabled>購入できません</button>");
 			} else if (shortage) {
@@ -135,15 +139,30 @@ public class VendingMachinePage {
 		html.append("<div><span class=\"status-label\">行動回数</span><strong>")
 				.append(gameState.getActionCount()).append("回</strong></div>");
 		html.append("</div>");
+		if (gameState.isGameFinished()) {
+			html.append("<p class=\"finished-message\">ゲーム終了</p>");
+			html.append("<form class=\"reset-form\" method=\"post\" action=\"/reset\">");
+			appendAgeConfirmedInput(html);
+			html.append("<button class=\"reset-button\" type=\"submit\">最初からやり直す</button>");
+			html.append("</form>");
+		}
 		html.append("<p class=\"game-message\">").append(escapeHtml(gameState.getMessage())).append("</p>");
 		html.append("<div class=\"game-actions\">");
 		html.append("<form class=\"explore-form\" method=\"post\" action=\"/explore\">");
 		appendAgeConfirmedInput(html);
-		html.append("<button class=\"explore-button\" type=\"submit\">探索する</button>");
+		if (gameState.isGameFinished()) {
+			html.append("<button class=\"explore-button\" type=\"button\" disabled>探索する</button>");
+		} else {
+			html.append("<button class=\"explore-button\" type=\"submit\">探索する</button>");
+		}
 		html.append("</form>");
 		html.append("<form class=\"pachinko-form\" method=\"post\" action=\"/pachinko\">");
 		appendAgeConfirmedInput(html);
-		html.append("<button class=\"pachinko-button\" type=\"submit\">パチンコ</button>");
+		if (gameState.isGameFinished()) {
+			html.append("<button class=\"pachinko-button\" type=\"button\" disabled>パチンコ</button>");
+		} else {
+			html.append("<button class=\"pachinko-button\" type=\"submit\">パチンコ</button>");
+		}
 		html.append("</form>");
 		html.append("</div>");
 		appendInventory(html, gameState, productIdsWithImage);
@@ -176,7 +195,11 @@ public class VendingMachinePage {
 				html.append("<form class=\"smoke-form\" method=\"post\" action=\"/smoke\">");
 				appendAgeConfirmedInput(html);
 				html.append("<input type=\"hidden\" name=\"productId\" value=\"").append(item.getProductId()).append("\">");
-				html.append("<button class=\"smoke-button\" type=\"submit\">吸う</button>");
+				if (gameState.isGameFinished()) {
+					html.append("<button class=\"smoke-button\" type=\"button\" disabled>吸う</button>");
+				} else {
+					html.append("<button class=\"smoke-button\" type=\"submit\">吸う</button>");
+				}
 				html.append("</form>");
 				html.append("</li>");
 			}
@@ -296,11 +319,15 @@ public class VendingMachinePage {
 		html.append(".status-label{display:block;color:#9ca3af;font-size:13px;margin-bottom:4px;}");
 		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
 		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
+		html.append(".finished-message{display:inline-block;margin:14px 0 0;padding:6px 10px;background:#dc2626;color:#fff;border-radius:6px;font-weight:bold;}");
+		html.append(".reset-form{margin:12px 0 0;}");
+		html.append(".reset-button{padding:10px 18px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
 		html.append(".game-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0;}");
 		html.append(".explore-form,.pachinko-form{margin:0;}");
 		html.append(".explore-button{padding:10px 18px;border:1px solid #22c55e;border-radius:6px;background:#22c55e;color:#052e16;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".pachinko-button{padding:10px 18px;border:1px solid #f97316;border-radius:6px;background:#f97316;color:#431407;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".explore-button:disabled,.pachinko-button:disabled,.smoke-button:disabled{border-color:#6b7280;background:#6b7280;color:#d1d5db;cursor:not-allowed;}");
 		html.append(".inventory-box{margin-top:16px;border-top:1px solid #374151;padding-top:14px;}");
 		html.append(".inventory-box h2{color:#f9fafb;margin-bottom:10px;}");
 		html.append(".inventory-empty{margin:0;color:#9ca3af;}");
@@ -352,6 +379,7 @@ public class VendingMachinePage {
 		html.append(".label{color:#57606a;}");
 		html.append(".sold-out-label{display:inline-block;margin-top:10px;padding:4px 8px;border-radius:999px;background:#cf222e;color:#fff;font-size:13px;font-weight:bold;}");
 		html.append(".shortage-label{display:inline-block;margin-top:10px;padding:4px 8px;border-radius:999px;background:#bf8700;color:#fff;font-size:13px;font-weight:bold;}");
+		html.append(".finished-label{display:inline-block;margin-top:10px;padding:4px 8px;border-radius:999px;background:#4b5563;color:#fff;font-size:13px;font-weight:bold;}");
 		html.append(".purchase-form{margin-top:auto;padding-top:12px;}");
 		html.append(".purchase-button{width:100%;padding:10px 12px;border:1px solid #16a34a;border-radius:6px;background:#16a34a;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;}");
 		html.append(".purchase-button:disabled{border-color:#8c959f;background:#8c959f;cursor:not-allowed;}");

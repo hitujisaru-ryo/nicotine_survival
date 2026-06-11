@@ -41,6 +41,7 @@ public class VendingMachineServer {
 		server.createContext("/explore", VendingMachineServer::handleExplore);
 		server.createContext("/pachinko", VendingMachineServer::handlePachinko);
 		server.createContext("/smoke", VendingMachineServer::handleSmoke);
+		server.createContext("/reset", VendingMachineServer::handleReset);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
 		server.start();
@@ -256,7 +257,31 @@ public class VendingMachineServer {
 		sendProductListResponse(exchange);
 	}
 
+	private static void handleReset(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		gameState.reset();
+		message = null;
+		purchasedProducts.clear();
+		sendProductListResponse(exchange);
+	}
+
 	private static void purchaseProduct(int productId) {
+		if (gameState.isGameFinished()) {
+			message = "ゲーム終了しています";
+			return;
+		}
+
 		ProductDAO dao = new ProductDAO();
 		Product product = dao.searchProduct(productId);
 
