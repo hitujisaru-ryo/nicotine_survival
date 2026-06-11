@@ -2,6 +2,8 @@ package game;
 
 import java.util.ArrayList;
 
+import bean.Product;
+
 public class GameState {
 
 	private int money = 0;
@@ -47,6 +49,14 @@ public class GameState {
 		money += amount;
 	}
 
+	public void subtractMoney(int amount) {
+		money -= amount;
+
+		if (money < 0) {
+			money = 0;
+		}
+	}
+
 	public void increaseNicotine(int amount) {
 		nicotine += amount;
 
@@ -87,5 +97,20 @@ public class GameState {
 
 	public void addInventoryItem(InventoryItem item) {
 		inventory.add(item);
+	}
+
+	public void addProductToInventory(Product product) {
+		for (InventoryItem item : inventory) {
+			if (item.getProductId() == product.getId()) {
+				item.addRemainingPieces(product.getNumberOfPieces());
+				return;
+			}
+		}
+
+		inventory.add(new InventoryItem(
+				product.getId(),
+				product.getName(),
+				product.getNumberOfPieces(),
+				product.getNicotine()));
 	}
 }

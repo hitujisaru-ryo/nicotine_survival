@@ -39,6 +39,8 @@ public class VendingMachineServer {
 		server.createContext("/refund", VendingMachineServer::handleRefund);
 		server.createContext("/purchase", VendingMachineServer::handlePurchase);
 		server.createContext("/explore", VendingMachineServer::handleExplore);
+		server.createContext("/pachinko", VendingMachineServer::handlePachinko);
+		server.createContext("/smoke", VendingMachineServer::handleSmoke);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
 		server.start();
@@ -212,6 +214,48 @@ public class VendingMachineServer {
 		sendProductListResponse(exchange);
 	}
 
+	private static void handlePachinko(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		gameService.pachinko(gameState);
+		sendProductListResponse(exchange);
+	}
+
+	private static void handleSmoke(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String idText = getFormValue(requestBody, "productId");
+
+		try {
+			int productId = Integer.parseInt(idText);
+			gameService.smoke(gameState, productId);
+		} catch (NumberFormatException e) {
+			gameState.setMessage("吸えるたばこがありません");
+		}
+
+		sendProductListResponse(exchange);
+	}
+
 	private static void purchaseProduct(int productId) {
 		ProductDAO dao = new ProductDAO();
 		Product product = dao.searchProduct(productId);
@@ -226,16 +270,17 @@ public class VendingMachineServer {
 			return;
 		}
 
-		if (insertedMoney < product.getPrice()) {
-			message = "投入金が足りません";
+		if (gameState.getMoney() < product.getPrice()) {
+			message = "所持金不足";
 			return;
 		}
 
-		insertedMoney = insertedMoney - product.getPrice();
+		gameState.subtractMoney(product.getPrice());
 		product.setQuantity(product.getQuantity() - 1);
 		dao.editProduct(product);
+		gameState.addProductToInventory(product);
 		purchasedProducts.add(product.getId() + "," + product.getName());
-		message = "購入しました";
+		message = product.getName() + "を購入した";
 	}
 
 	private static void handleImage(HttpExchange exchange) throws IOException {

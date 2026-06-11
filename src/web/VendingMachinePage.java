@@ -68,7 +68,7 @@ public class VendingMachinePage {
 
 		for (Product product : products) {
 			boolean soldOut = product.getQuantity() == 0;
-			boolean shortage = insertedMoney < product.getPrice();
+			boolean shortage = gameState.getMoney() < product.getPrice();
 
 			if (soldOut) {
 				html.append("<section class=\"product-card sold-out\">");
@@ -97,7 +97,7 @@ public class VendingMachinePage {
 				html.append("<span class=\"sold-out-label\">売り切れ</span>");
 				html.append("<button class=\"purchase-button\" type=\"button\" disabled>購入できません</button>");
 			} else if (shortage) {
-				html.append("<span class=\"shortage-label\">投入金不足</span>");
+				html.append("<span class=\"shortage-label\">所持金不足</span>");
 				html.append("<button class=\"purchase-button\" type=\"button\" disabled>購入できません</button>");
 			} else {
 				html.append("<form class=\"purchase-form\" method=\"post\" action=\"/purchase\">");
@@ -136,10 +136,16 @@ public class VendingMachinePage {
 				.append(gameState.getActionCount()).append("回</strong></div>");
 		html.append("</div>");
 		html.append("<p class=\"game-message\">").append(escapeHtml(gameState.getMessage())).append("</p>");
+		html.append("<div class=\"game-actions\">");
 		html.append("<form class=\"explore-form\" method=\"post\" action=\"/explore\">");
 		appendAgeConfirmedInput(html);
 		html.append("<button class=\"explore-button\" type=\"submit\">探索する</button>");
 		html.append("</form>");
+		html.append("<form class=\"pachinko-form\" method=\"post\" action=\"/pachinko\">");
+		appendAgeConfirmedInput(html);
+		html.append("<button class=\"pachinko-button\" type=\"submit\">パチンコ</button>");
+		html.append("</form>");
+		html.append("</div>");
 		appendInventory(html, gameState, productIdsWithImage);
 		html.append("</section>");
 	}
@@ -165,8 +171,13 @@ public class VendingMachinePage {
 				}
 
 				html.append("</span>");
-				html.append("<span>").append(escapeHtml(item.getProductName()))
+				html.append("<span class=\"inventory-detail\">").append(escapeHtml(item.getProductName()))
 						.append(" / 残り").append(item.getRemainingPieces()).append("本</span>");
+				html.append("<form class=\"smoke-form\" method=\"post\" action=\"/smoke\">");
+				appendAgeConfirmedInput(html);
+				html.append("<input type=\"hidden\" name=\"productId\" value=\"").append(item.getProductId()).append("\">");
+				html.append("<button class=\"smoke-button\" type=\"submit\">吸う</button>");
+				html.append("</form>");
 				html.append("</li>");
 			}
 
@@ -286,15 +297,20 @@ public class VendingMachinePage {
 		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
 		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
-		html.append(".explore-form{margin:14px 0 0;}");
+		html.append(".game-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0;}");
+		html.append(".explore-form,.pachinko-form{margin:0;}");
 		html.append(".explore-button{padding:10px 18px;border:1px solid #22c55e;border-radius:6px;background:#22c55e;color:#052e16;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".pachinko-button{padding:10px 18px;border:1px solid #f97316;border-radius:6px;background:#f97316;color:#431407;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".inventory-box{margin-top:16px;border-top:1px solid #374151;padding-top:14px;}");
 		html.append(".inventory-box h2{color:#f9fafb;margin-bottom:10px;}");
 		html.append(".inventory-empty{margin:0;color:#9ca3af;}");
 		html.append(".inventory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0;padding:0;list-style:none;}");
 		html.append(".inventory-item{display:flex;align-items:center;gap:8px;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:8px;}");
+		html.append(".inventory-detail{flex:1;}");
 		html.append(".inventory-thumb{width:42px;height:42px;background:#eef2f6;border:1px solid #9ca3af;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b7280;overflow:hidden;}");
 		html.append(".inventory-thumb img{width:100%;height:100%;object-fit:contain;display:block;}");
+		html.append(".smoke-form{margin:0;}");
+		html.append(".smoke-button{padding:7px 10px;border:1px solid #eab308;border-radius:6px;background:#eab308;color:#422006;font-weight:bold;cursor:pointer;}");
 		html.append(".main-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start;}");
 		html.append(".products-area{background:#1f2937;border:6px solid #111827;border-radius:10px;padding:18px;}");
 		html.append(".products-area h2{color:#fff;}");
