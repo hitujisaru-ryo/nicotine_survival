@@ -789,7 +789,7 @@ public class VendingMachinePage {
 		html.append(".pachinko-jackpot{background:#fef3c7;border-color:#f59e0b;}");
 		html.append(".pachinko-hot{background:#fee2e2;border-color:#ef4444;}");
 		html.append(".pachinko-disabled{background:#f3f4f6;border-color:#6b7280;}");
-		html.append(".age-panel{max-width:420px;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;}");
+		html.append(".age-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100vw - 48px));background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;box-sizing:border-box;}");
 		html.append(".age-actions{display:flex;gap:12px;}");
 		html.append(".age-button{padding:10px 18px;border:1px solid #8c959f;border-radius:6px;background:#fff;color:#24292f;font-size:15px;cursor:pointer;}");
 		html.append(".age-button.primary{border-color:#1f6feb;background:#1f6feb;color:#fff;}");
