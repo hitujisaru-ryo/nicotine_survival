@@ -29,6 +29,7 @@ public class VendingMachineServer {
 	private static ArrayList<String> purchasedProducts = new ArrayList<String>();
 	private static GameState gameState = new GameState();
 	private static GameService gameService = new GameService();
+	private static boolean showPachinkoResult;
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
@@ -229,6 +230,7 @@ public class VendingMachineServer {
 		}
 
 		gameService.pachinko(gameState);
+		showPachinkoResult = true;
 		sendProductListResponse(exchange);
 	}
 
@@ -386,7 +388,9 @@ public class VendingMachineServer {
 				message,
 				productIdsWithImage,
 				purchasedProducts,
-				gameState);
+				gameState,
+				showPachinkoResult);
+		showPachinkoResult = false;
 
 		sendTextResponse(exchange, 200, html);
 	}

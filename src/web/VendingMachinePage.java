@@ -50,7 +50,8 @@ public class VendingMachinePage {
 			String message,
 			Set<Integer> productIdsWithImage,
 			ArrayList<String> purchasedProducts,
-			GameState gameState) {
+			GameState gameState,
+			boolean showPachinkoResult) {
 		StringBuilder html = new StringBuilder();
 
 		appendPageStart(html, "ニコチン・サバイバル");
@@ -73,6 +74,7 @@ public class VendingMachinePage {
 		html.append("</aside>");
 		html.append("</main>");
 		appendVendingModal(html, products, productIdsWithImage, gameState);
+		appendPachinkoResultModal(html, gameState, showPachinkoResult);
 		appendPageEnd(html);
 
 		return html.toString();
@@ -145,6 +147,92 @@ public class VendingMachinePage {
 		html.append("</div>");
 		html.append("</section>");
 		html.append("</div>");
+	}
+
+	private static void appendPachinkoResultModal(StringBuilder html, GameState gameState, boolean showPachinkoResult) {
+		if (!showPachinkoResult) {
+			return;
+		}
+
+		String resultClass = getPachinkoResultClass(gameState.getMessage());
+		String title = getPachinkoResultTitle(gameState.getMessage());
+		String resultMessage = getPachinkoResultMessage(gameState.getMessage());
+
+		html.append("<div id=\"pachinkoResultModal\" class=\"modal-overlay open\">");
+		html.append("<section class=\"pachinko-result ").append(resultClass).append("\">");
+		html.append("<h2>").append(escapeHtml(title)).append("</h2>");
+		html.append("<p>").append(escapeHtml(resultMessage)).append("</p>");
+		html.append("<button class=\"close-button\" type=\"button\" onclick=\"closePachinkoResultModal()\">閉じる</button>");
+		html.append("</section>");
+		html.append("</div>");
+	}
+
+	private static String getPachinkoResultClass(String message) {
+		if (message == null) {
+			return "pachinko-lose";
+		}
+
+		if (message.contains("お金が足りない")) {
+			return "pachinko-disabled";
+		}
+
+		if (message.contains("3000円") || message.contains("激アツ")) {
+			return "pachinko-hot";
+		}
+
+		if (message.contains("1000円")) {
+			return "pachinko-jackpot";
+		}
+
+		if (message.contains("300円")) {
+			return "pachinko-win";
+		}
+
+		return "pachinko-lose";
+	}
+
+	private static String getPachinkoResultTitle(String message) {
+		String resultClass = getPachinkoResultClass(message);
+
+		if ("pachinko-disabled".equals(resultClass)) {
+			return "プレイ不可";
+		}
+
+		if ("pachinko-hot".equals(resultClass)) {
+			return "激アツ！！！";
+		}
+
+		if ("pachinko-jackpot".equals(resultClass)) {
+			return "大当たり！！";
+		}
+
+		if ("pachinko-win".equals(resultClass)) {
+			return "当たり！";
+		}
+
+		return "ハズレ...";
+	}
+
+	private static String getPachinkoResultMessage(String message) {
+		String resultClass = getPachinkoResultClass(message);
+
+		if ("pachinko-disabled".equals(resultClass)) {
+			return "お金が足りない";
+		}
+
+		if ("pachinko-hot".equals(resultClass)) {
+			return "3000円獲得！";
+		}
+
+		if ("pachinko-jackpot".equals(resultClass)) {
+			return "1000円獲得！";
+		}
+
+		if ("pachinko-win".equals(resultClass)) {
+			return "300円獲得！";
+		}
+
+		return "100円失った";
 	}
 
 	private static void appendGameStatus(StringBuilder html, GameState gameState, Set<Integer> productIdsWithImage) {
@@ -388,6 +476,14 @@ public class VendingMachinePage {
 		html.append(".modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}");
 		html.append(".modal-header h2{margin:0;color:#fff;}");
 		html.append(".close-button{padding:8px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;color:#111827;font-weight:bold;cursor:pointer;}");
+		html.append(".pachinko-result{width:360px;border-radius:10px;padding:24px;text-align:center;color:#111827;border:4px solid #d1d5db;}");
+		html.append(".pachinko-result h2{margin:0 0 12px;font-size:30px;}");
+		html.append(".pachinko-result p{margin:0 0 18px;font-size:20px;font-weight:bold;}");
+		html.append(".pachinko-lose{background:#e5e7eb;border-color:#9ca3af;}");
+		html.append(".pachinko-win{background:#dcfce7;border-color:#22c55e;}");
+		html.append(".pachinko-jackpot{background:#fef3c7;border-color:#f59e0b;}");
+		html.append(".pachinko-hot{background:#fee2e2;border-color:#ef4444;}");
+		html.append(".pachinko-disabled{background:#f3f4f6;border-color:#6b7280;}");
 		html.append(".age-panel{max-width:420px;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;}");
 		html.append(".age-actions{display:flex;gap:12px;}");
 		html.append(".age-button{padding:10px 18px;border:1px solid #8c959f;border-radius:6px;background:#fff;color:#24292f;font-size:15px;cursor:pointer;}");
@@ -440,6 +536,7 @@ public class VendingMachinePage {
 		html.append("<script>");
 		html.append("function openVendingModal(){document.getElementById('vendingModal').classList.add('open');}");
 		html.append("function closeVendingModal(){document.getElementById('vendingModal').classList.remove('open');}");
+		html.append("function closePachinkoResultModal(){document.getElementById('pachinkoResultModal').classList.remove('open');}");
 		html.append("</script>");
 		html.append("</body>");
 		html.append("</html>");
