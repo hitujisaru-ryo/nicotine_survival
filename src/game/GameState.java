@@ -42,4 +42,50 @@ public class GameState {
 	public ArrayList<InventoryItem> getInventory() {
 		return inventory;
 	}
+
+	public void addMoney(int amount) {
+		money += amount;
+	}
+
+	public void increaseNicotine(int amount) {
+		nicotine += amount;
+
+		if (nicotine > 100) {
+			nicotine = 100;
+		}
+	}
+
+	public void decreaseNicotine(int amount) {
+		nicotine -= amount;
+
+		if (nicotine < 0) {
+			nicotine = 0;
+		}
+	}
+
+	public void advanceAction() {
+		actionCount++;
+		decreaseNicotine(5);
+
+		if (actionCount >= 20) {
+			day++;
+			actionCount = 0;
+		}
+	}
+
+	public boolean isNicotineShortage() {
+		return getNicotine() <= 10;
+	}
+
+	public boolean isGameClear() {
+		return day >= 6;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	public void addInventoryItem(InventoryItem item) {
+		inventory.add(item);
+	}
 }

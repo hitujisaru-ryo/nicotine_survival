@@ -17,6 +17,7 @@ import com.sun.net.httpserver.HttpServer;
 import bean.Product;
 import dao.ProductDAO;
 import game.GameState;
+import game.GameService;
 
 public class VendingMachineServer {
 
@@ -27,6 +28,7 @@ public class VendingMachineServer {
 	private static String message;
 	private static ArrayList<String> purchasedProducts = new ArrayList<String>();
 	private static GameState gameState = new GameState();
+	private static GameService gameService = new GameService();
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
@@ -36,6 +38,7 @@ public class VendingMachineServer {
 		server.createContext("/add-money", VendingMachineServer::handleAddMoney);
 		server.createContext("/refund", VendingMachineServer::handleRefund);
 		server.createContext("/purchase", VendingMachineServer::handlePurchase);
+		server.createContext("/explore", VendingMachineServer::handleExplore);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
 		server.start();
@@ -188,6 +191,24 @@ public class VendingMachineServer {
 			message = "該当する商品がありません";
 		}
 
+		sendProductListResponse(exchange);
+	}
+
+	private static void handleExplore(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		ProductDAO dao = new ProductDAO();
+		gameService.explore(gameState, dao.searchAllProducts());
 		sendProductListResponse(exchange);
 	}
 

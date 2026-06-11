@@ -5,6 +5,7 @@ import java.util.Set;
 
 import bean.Product;
 import game.GameState;
+import game.InventoryItem;
 
 public class VendingMachinePage {
 
@@ -53,7 +54,7 @@ public class VendingMachinePage {
 		StringBuilder html = new StringBuilder();
 
 		appendPageStart(html, "Web自動販売機");
-		appendGameStatus(html, gameState);
+		appendGameStatus(html, gameState, productIdsWithImage);
 		html.append("<h1>Web自動販売機</h1>");
 		html.append("<main class=\"main-layout\">");
 		html.append("<section class=\"products-area\">");
@@ -119,7 +120,7 @@ public class VendingMachinePage {
 		return html.toString();
 	}
 
-	private static void appendGameStatus(StringBuilder html, GameState gameState) {
+	private static void appendGameStatus(StringBuilder html, GameState gameState, Set<Integer> productIdsWithImage) {
 		html.append("<section class=\"game-status\">");
 		html.append("<h1>ニコチン・サバイバル</h1>");
 		html.append("<div class=\"status-grid\">");
@@ -135,7 +136,44 @@ public class VendingMachinePage {
 				.append(gameState.getActionCount()).append("回</strong></div>");
 		html.append("</div>");
 		html.append("<p class=\"game-message\">").append(escapeHtml(gameState.getMessage())).append("</p>");
+		html.append("<form class=\"explore-form\" method=\"post\" action=\"/explore\">");
+		appendAgeConfirmedInput(html);
+		html.append("<button class=\"explore-button\" type=\"submit\">探索する</button>");
+		html.append("</form>");
+		appendInventory(html, gameState, productIdsWithImage);
 		html.append("</section>");
+	}
+
+	private static void appendInventory(StringBuilder html, GameState gameState, Set<Integer> productIdsWithImage) {
+		html.append("<div class=\"inventory-box\">");
+		html.append("<h2>持ち物</h2>");
+
+		if (gameState.getInventory().isEmpty()) {
+			html.append("<p class=\"inventory-empty\">まだ何も持っていません</p>");
+		} else {
+			html.append("<ul class=\"inventory-list\">");
+
+			for (InventoryItem item : gameState.getInventory()) {
+				html.append("<li class=\"inventory-item\">");
+				html.append("<span class=\"inventory-thumb\">");
+
+				if (productIdsWithImage.contains(item.getProductId())) {
+					html.append("<img src=\"/images/product_").append(item.getProductId()).append(".png\" alt=\"")
+							.append(escapeHtml(item.getProductName())).append("\">");
+				} else {
+					html.append("No Image");
+				}
+
+				html.append("</span>");
+				html.append("<span>").append(escapeHtml(item.getProductName()))
+						.append(" / 残り").append(item.getRemainingPieces()).append("本</span>");
+				html.append("</li>");
+			}
+
+			html.append("</ul>");
+		}
+
+		html.append("</div>");
 	}
 
 	private static void appendControlPanel(
@@ -248,6 +286,15 @@ public class VendingMachinePage {
 		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
 		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
+		html.append(".explore-form{margin:14px 0 0;}");
+		html.append(".explore-button{padding:10px 18px;border:1px solid #22c55e;border-radius:6px;background:#22c55e;color:#052e16;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".inventory-box{margin-top:16px;border-top:1px solid #374151;padding-top:14px;}");
+		html.append(".inventory-box h2{color:#f9fafb;margin-bottom:10px;}");
+		html.append(".inventory-empty{margin:0;color:#9ca3af;}");
+		html.append(".inventory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0;padding:0;list-style:none;}");
+		html.append(".inventory-item{display:flex;align-items:center;gap:8px;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:8px;}");
+		html.append(".inventory-thumb{width:42px;height:42px;background:#eef2f6;border:1px solid #9ca3af;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b7280;overflow:hidden;}");
+		html.append(".inventory-thumb img{width:100%;height:100%;object-fit:contain;display:block;}");
 		html.append(".main-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start;}");
 		html.append(".products-area{background:#1f2937;border:6px solid #111827;border-radius:10px;padding:18px;}");
 		html.append(".products-area h2{color:#fff;}");
