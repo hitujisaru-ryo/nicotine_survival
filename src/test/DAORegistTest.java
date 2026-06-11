@@ -1,4 +1,4 @@
-﻿package test;
+package test;
 
 import java.util.ArrayList;
 
@@ -15,7 +15,7 @@ public class DAORegistTest {
 		ProductDAO dao = new ProductDAO();
 
 		System.out.println("■商品登録テスト");
-		Product product = new Product(4, "ボズ", 120, 11);
+		Product product = new Product(4, "ボズ", 120, 11, 20, 8);
 		dao.registProduct(product);
 
 		System.out.println("■商品一覧表示テスト");
@@ -26,6 +26,8 @@ public class DAORegistTest {
 			System.out.println("商品名:" + p.getName());
 			System.out.println("単価:" + p.getPrice());
 			System.out.println("数量:" + p.getQuantity());
+			System.out.println("本数:" + p.getNumberOfPieces());
+			System.out.println("ニコチン:" + p.getNicotine());
 			System.out.println();
 		}
 	}

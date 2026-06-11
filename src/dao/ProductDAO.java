@@ -25,14 +25,24 @@ public class ProductDAO {
 			while ((line = br.readLine()) != null) {
 				line = removeBom(line);
 				String[] data = line.split(",");
+				
+				if (data.length < 6) {
+					continue;
+				}
 
-				int id = Integer.parseInt(data[0]);
-				String name = data[1];
-				int price = Integer.parseInt(data[2]);
-				int quantity = Integer.parseInt(data[3]);
+				try {
+					int id = Integer.parseInt(data[0].trim());
+					String name = data[1].trim();
+					int price = Integer.parseInt(data[2].trim());
+					int quantity = Integer.parseInt(data[3].trim());
+					int numberOfPieces = Integer.parseInt(data[4].trim());
+					int nicotine = Integer.parseInt(data[5].trim());
 
-				Product product = new Product(id, name, price, quantity);
-				list.add(product);
+					Product product = new Product(id, name, price, quantity, numberOfPieces, nicotine);
+					list.add(product);
+				} catch (NumberFormatException e) {
+					continue;
+				}
 			}
 
 		} catch (IOException e) {
@@ -81,7 +91,9 @@ public class ProductDAO {
 					p.getId() + "," +
 					p.getName() + "," +
 					p.getPrice() + "," +
-					p.getQuantity()
+					p.getQuantity() + "," +
+					p.getNumberOfPieces() + "," +
+					p.getNicotine()
 				);
 			}
 
@@ -102,7 +114,9 @@ public class ProductDAO {
 				product.getId() + "," +
 				product.getName() + "," +
 				product.getPrice() + "," +
-				product.getQuantity()
+				product.getQuantity() + "," +
+				product.getNumberOfPieces() + "," +
+				product.getNicotine()
 			);
 
 		} catch (IOException e) {
@@ -130,7 +144,9 @@ public class ProductDAO {
 					p.getId() + "," +
 					p.getName() + "," +
 					p.getPrice() + "," +
-					p.getQuantity()
+					p.getQuantity() + "," +
+					p.getNumberOfPieces() + "," +
+					p.getNicotine()
 				);
 			}
 

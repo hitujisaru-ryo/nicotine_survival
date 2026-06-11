@@ -1,4 +1,4 @@
-﻿package client_bean;
+package client_bean;
 
 import java.util.ArrayList;
 

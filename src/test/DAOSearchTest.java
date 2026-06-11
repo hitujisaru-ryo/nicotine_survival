@@ -1,4 +1,4 @@
-﻿package test;
+package test;
 
 import bean.Product;
 import dao.ProductDAO;

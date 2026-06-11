@@ -1,4 +1,4 @@
-﻿package master_bean;
+package master_bean;
 
 import bean.Product;
 import dao.ProductDAO;
@@ -22,8 +22,10 @@ public class ProductEditBean implements BeanInf {
 		String name = Keyboard.getInputString("商品名を入力してください。\n->");
 		int price = Keyboard.getInputNumber("単価を入力してください。\n->");
 		int quantity = Keyboard.getInputNumber("数量を入力してください。\n->");
+		int numberOfPieces = Keyboard.getInputNumber("1箱あたりの本数を入力してください。\n->");
+		int nicotine = Keyboard.getInputNumber("ニコチン量を入力してください。\n->");
 
-		Product product = new Product(id, name, price, quantity);
+		Product product = new Product(id, name, price, quantity, numberOfPieces, nicotine);
 		dao.editProduct(product);
 
 		System.out.println("商品を更新しました。");

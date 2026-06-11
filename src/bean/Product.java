@@ -8,6 +8,8 @@ public class Product implements Serializable {
 	private String name;
 	private int price;
 	private int quantity;
+	private int numberOfPieces;
+	private int nicotine;
 
 	public Product() {
 	}
@@ -17,6 +19,15 @@ public class Product implements Serializable {
 		this.name = name;
 		this.price = price;
 		this.quantity = quantity;
+	}
+
+	public Product(int id, String name, int price, int quantity, int numberOfPieces, int nicotine) {
+		this.id = id;
+		this.name = name;
+		this.price = price;
+		this.quantity = quantity;
+		this.numberOfPieces = numberOfPieces;
+		this.nicotine = nicotine;
 	}
 
 	public void setId(int id) {
@@ -49,5 +60,21 @@ public class Product implements Serializable {
 
 	public int getQuantity() {
 		return quantity;
+	}
+
+	public void setNumberOfPieces(int numberOfPieces) {
+		this.numberOfPieces = numberOfPieces;
+	}
+
+	public int getNumberOfPieces() {
+		return numberOfPieces;
+	}
+
+	public void setNicotine(int nicotine) {
+		this.nicotine = nicotine;
+	}
+
+	public int getNicotine() {
+		return nicotine;
 	}
 }

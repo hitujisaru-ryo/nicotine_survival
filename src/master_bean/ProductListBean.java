@@ -1,4 +1,4 @@
-﻿package master_bean;
+package master_bean;
 
 import java.util.ArrayList;
 

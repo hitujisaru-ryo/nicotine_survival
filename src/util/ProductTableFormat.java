@@ -31,14 +31,18 @@ public class ProductTableFormat {
 		return textFormat("商品ID", 8)
 			 + textFormat("商品名", 20)
 			 + textFormat("単価", 8)
-			 + textFormat("数量", 8);
+			 + textFormat("数量", 8)
+			 + textFormat("本数", 8)
+			 + textFormat("ニコチン", 10);
 	}
 
 	public static String tableFormat(Product product) {
 		return textFormat(String.valueOf(product.getId()), 8)
 			 + textFormat(product.getName(), 20)
 			 + textFormat(String.valueOf(product.getPrice()) + "円", 8)
-			 + textFormat(String.valueOf(product.getQuantity()), 8);
+			 + textFormat(String.valueOf(product.getQuantity()), 8)
+			 + textFormat(String.valueOf(product.getNumberOfPieces()), 8)
+			 + textFormat(String.valueOf(product.getNicotine()), 10);
 	}
 
 	public static String buyHeader() {

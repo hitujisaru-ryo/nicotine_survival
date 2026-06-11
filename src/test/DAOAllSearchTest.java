@@ -1,4 +1,4 @@
-﻿package test;
+package test;
 
 import java.util.ArrayList;
 
@@ -22,6 +22,8 @@ public class DAOAllSearchTest {
 			System.out.println("商品名:" + p.getName());
 			System.out.println("単価:" + p.getPrice());
 			System.out.println("数量:" + p.getQuantity());
+			System.out.println("本数:" + p.getNumberOfPieces());
+			System.out.println("ニコチン:" + p.getNicotine());
 			System.out.println();
 		}
 	}

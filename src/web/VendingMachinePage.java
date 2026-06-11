@@ -84,8 +84,6 @@ public class VendingMachinePage {
 			html.append("</div>");
 			html.append("<div class=\"body\">");
 			html.append("<p class=\"product-name\">").append(escapeHtml(product.getName())).append("</p>");
-			html.append("<div class=\"product-info\"><span class=\"label\">商品ID</span><span>")
-					.append(product.getId()).append("</span></div>");
 			html.append("<div class=\"product-info\"><span class=\"label\">単価</span><span>")
 					.append(product.getPrice()).append("円</span></div>");
 			html.append("<div class=\"product-info\"><span class=\"label\">数量</span><span>")
