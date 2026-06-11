@@ -12,8 +12,10 @@ public class GameState {
 	private int nicotine = 100;
 	private int day = 1;
 	private int actionCount = 0;
+	private int totalActionCount = 0;
 	private boolean gameOver = false;
 	private boolean dayAdvanced = false;
+	private boolean nicotineGold = false;
 	private int survivedDay = 0;
 	private String message = INITIAL_MESSAGE;
 	private ArrayList<InventoryItem> inventory = new ArrayList<InventoryItem>();
@@ -40,6 +42,10 @@ public class GameState {
 
 	public int getActionCount() {
 		return actionCount;
+	}
+
+	public boolean isNicotineGold() {
+		return nicotineGold && getNicotine() == 100;
 	}
 
 	public String getMessage() {
@@ -81,6 +87,10 @@ public class GameState {
 		if (nicotine > 100) {
 			nicotine = 100;
 		}
+
+		if (totalActionCount >= 2 && nicotine == 100) {
+			nicotineGold = true;
+		}
 	}
 
 	public void decreaseNicotine(int amount) {
@@ -99,6 +109,7 @@ public class GameState {
 		dayAdvanced = false;
 		survivedDay = 0;
 		actionCount++;
+		totalActionCount++;
 		decreaseNicotine(10);
 
 		if (nicotine == 0) {
@@ -163,8 +174,10 @@ public class GameState {
 		nicotine = 100;
 		day = 1;
 		actionCount = 0;
+		totalActionCount = 0;
 		gameOver = false;
 		dayAdvanced = false;
+		nicotineGold = false;
 		survivedDay = 0;
 		message = INITIAL_MESSAGE;
 		inventory.clear();

@@ -30,7 +30,10 @@ public class VendingMachineServer {
 	private static ArrayList<String> purchasedProducts = new ArrayList<String>();
 	private static GameState gameState = new GameState();
 	private static GameService gameService = new GameService();
+	private static UserDataDAO userDataDAO = new UserDataDAO();
 	private static ArrayList<Product> webProducts = new ArrayList<Product>();
+	private static String currentAccountName;
+	private static boolean resultSaved;
 	private static boolean showPachinkoResult;
 	private static boolean showExploreResult;
 	private static boolean showSmokeResult;
@@ -42,6 +45,8 @@ public class VendingMachineServer {
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 		server.createContext("/", VendingMachineServer::handleIndex);
+		server.createContext("/account", VendingMachineServer::handleAccount);
+		server.createContext("/start-game", VendingMachineServer::handleStartGame);
 		server.createContext("/age-check", VendingMachineServer::handleAgeCheck);
 		server.createContext("/set-money", VendingMachineServer::handleSetMoney);
 		server.createContext("/add-money", VendingMachineServer::handleAddMoney);
@@ -51,6 +56,7 @@ public class VendingMachineServer {
 		server.createContext("/pachinko", VendingMachineServer::handlePachinko);
 		server.createContext("/smoke", VendingMachineServer::handleSmoke);
 		server.createContext("/reset", VendingMachineServer::handleReset);
+		server.createContext("/restart", VendingMachineServer::handleRestart);
 		server.createContext("/quit-smoking", VendingMachineServer::handleQuitSmoking);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
@@ -67,7 +73,34 @@ public class VendingMachineServer {
 			return;
 		}
 
-		// 年齢確認済み状態はサーバーに保存しないため、トップページは毎回確認画面にします。
+		sendTextResponse(exchange, 200, VendingMachinePage.createRankingPage(userDataDAO.findAll()));
+	}
+
+	private static void handleAccount(HttpExchange exchange) throws IOException {
+		if (!"/account".equals(exchange.getRequestURI().getPath())) {
+			sendTextResponse(exchange, 404, "Not Found");
+			return;
+		}
+
+		sendTextResponse(exchange, 200, VendingMachinePage.createAccountPage(null));
+	}
+
+	private static void handleStartGame(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String accountName = getFormValue(requestBody, "accountName").trim();
+
+		if (accountName.isEmpty()) {
+			sendTextResponse(exchange, 200, VendingMachinePage.createAccountPage("名前を入力してください"));
+			return;
+		}
+
+		currentAccountName = accountName;
+		startNewGame();
 		sendTextResponse(exchange, 200, VendingMachinePage.createAgeCheckPage());
 	}
 
@@ -81,6 +114,11 @@ public class VendingMachineServer {
 		String answer = getFormValue(requestBody, "answer");
 
 		if ("yes".equals(answer)) {
+			if (currentAccountName == null || currentAccountName.isBlank()) {
+				redirectToIndex(exchange);
+				return;
+			}
+
 			sendProductListResponse(exchange);
 			return;
 		}
@@ -232,6 +270,7 @@ public class VendingMachineServer {
 		rememberInventoryBeforeExplore();
 		gameService.explore(gameState, dao.searchAllProducts());
 		showExploreResult = true;
+		saveResultIfGameFinished();
 		sendProductListResponse(exchange);
 	}
 
@@ -251,6 +290,7 @@ public class VendingMachineServer {
 		rememberStatusBeforeAction();
 		gameService.pachinko(gameState);
 		showPachinkoResult = true;
+		saveResultIfGameFinished();
 		sendProductListResponse(exchange);
 	}
 
@@ -274,6 +314,7 @@ public class VendingMachineServer {
 			rememberStatusBeforeAction();
 			gameService.smoke(gameState, productId);
 			showSmokeResult = true;
+			saveResultIfGameFinished();
 		} catch (NumberFormatException e) {
 			gameState.setMessage("吸えるたばこがありません");
 			clearStatusBeforeAction();
@@ -299,6 +340,7 @@ public class VendingMachineServer {
 		message = null;
 		purchasedProducts.clear();
 		reloadWebProducts();
+		resultSaved = false;
 		sendProductListResponse(exchange);
 	}
 
@@ -317,6 +359,29 @@ public class VendingMachineServer {
 
 		gameState.quitSmoking();
 		message = null;
+		saveResultIfGameFinished();
+		sendProductListResponse(exchange);
+	}
+
+	private static void handleRestart(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		if (currentAccountName == null || currentAccountName.isBlank()) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		startNewGame();
 		sendProductListResponse(exchange);
 	}
 
@@ -455,6 +520,47 @@ public class VendingMachineServer {
 	private static void clearStatusBeforeAction() {
 		statusStartMoney = null;
 		statusStartNicotine = null;
+	}
+
+	private static void startNewGame() {
+		currentMoney = null;
+		insertedMoney = 0;
+		message = null;
+		purchasedProducts.clear();
+		gameState.reset();
+		reloadWebProducts();
+		resultSaved = false;
+		showPachinkoResult = false;
+		showExploreResult = false;
+		showSmokeResult = false;
+		showPurchaseResult = false;
+		clearStatusBeforeAction();
+		clearInventoryBeforeExplore();
+	}
+
+	private static void saveResultIfGameFinished() {
+		if (resultSaved || !gameState.isGameFinished()) {
+			return;
+		}
+
+		userDataDAO.addRecord(currentAccountName, gameState.getDay(), gameState.getActionCount(), getClearTitle());
+		resultSaved = true;
+	}
+
+	private static String getClearTitle() {
+		if (!gameState.isGameClear()) {
+			return null;
+		}
+
+		if (gameState.getMoney() >= 5000) {
+			return "伝説のヤニカス";
+		}
+
+		if (gameState.getMoney() >= 3000) {
+			return "ベテランヤニカス";
+		}
+
+		return "見習いヤニカス";
 	}
 
 	private static void ensureWebProductsLoaded() {

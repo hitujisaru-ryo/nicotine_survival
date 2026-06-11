@@ -39,6 +39,7 @@ public class GameService {
 			return;
 		}
 
+		boolean nicotineMax = gameState.getNicotine() == 100;
 		gameState.advanceAction();
 
 		if (gameState.isGameFinished()) {
@@ -47,7 +48,9 @@ public class GameService {
 
 		int roll = random.nextInt(100);
 
-		if (gameState.isNicotineShortage()) {
+		if (nicotineMax) {
+			pachinkoWithNicotineMax(gameState, roll);
+		} else if (gameState.isNicotineShortage()) {
 			pachinkoWithNicotineShortage(gameState, roll);
 		} else {
 			pachinkoNormally(gameState, roll);
@@ -118,6 +121,19 @@ public class GameService {
 		} else {
 			gameState.addMoney(3000);
 			gameState.setMessage("ニコチン切れでも激アツ！3000円増えた");
+		}
+	}
+
+	private void pachinkoWithNicotineMax(GameState gameState, int roll) {
+		if (roll < 30) {
+			gameState.addMoney(300);
+			gameState.setMessage("ニコチン全開！パチンコで勝った！300円増えた");
+		} else if (roll < 60) {
+			gameState.addMoney(1000);
+			gameState.setMessage("ニコチン全開！パチンコで大当たり！1000円増えた");
+		} else {
+			gameState.addMoney(3000);
+			gameState.setMessage("ニコチン全開！激アツ！3000円増えた");
 		}
 	}
 

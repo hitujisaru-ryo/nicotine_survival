@@ -9,6 +9,79 @@ import game.InventoryItem;
 
 public class VendingMachinePage {
 
+	public static String createRankingPage(ArrayList<UserRecord> records) {
+		StringBuilder html = new StringBuilder();
+
+		appendPageStart(html, "ランキング");
+		html.append("<main class=\"ranking-page\">");
+		html.append("<section class=\"ranking-panel\">");
+		html.append("<div class=\"ranking-header\">");
+		html.append("<h1>ニコチン・サバイバル ランキング</h1>");
+		html.append("<form method=\"get\" action=\"/account\">");
+		html.append("<button class=\"start-button\" type=\"submit\">ゲームスタート</button>");
+		html.append("</form>");
+		html.append("</div>");
+
+		if (records.isEmpty()) {
+			html.append("<p class=\"ranking-empty\">まだ記録はありません</p>");
+		} else {
+			html.append("<table class=\"ranking-table\">");
+			html.append("<thead><tr>");
+			html.append("<th>順位</th>");
+			html.append("<th>アカウント名</th>");
+			html.append("<th>進行日数</th>");
+			html.append("<th>行動回数</th>");
+			html.append("<th>時間</th>");
+			html.append("<th>称号</th>");
+			html.append("</tr></thead>");
+			html.append("<tbody>");
+
+			int rank = 1;
+			for (UserRecord record : records) {
+				html.append("<tr>");
+				html.append("<td>").append(rank).append("</td>");
+				html.append("<td>").append(escapeHtml(record.getAccountName())).append("</td>");
+				html.append("<td>").append(record.getDay()).append("日目</td>");
+				html.append("<td>").append(record.getActionCount()).append("回</td>");
+				html.append("<td>").append(escapeHtml(record.getRecordedAt())).append("</td>");
+				html.append("<td>").append(escapeHtml(getDisplayTitle(record.getTitle()))).append("</td>");
+				html.append("</tr>");
+				rank++;
+			}
+
+			html.append("</tbody>");
+			html.append("</table>");
+		}
+
+		html.append("</section>");
+		html.append("</main>");
+		appendPageEnd(html);
+		return html.toString();
+	}
+
+	public static String createAccountPage(String errorMessage) {
+		StringBuilder html = new StringBuilder();
+
+		appendPageStart(html, "アカウント登録");
+		html.append("<main class=\"account-page\">");
+		html.append("<section class=\"account-panel\">");
+		html.append("<h1>アカウント登録</h1>");
+
+		if (errorMessage != null && !errorMessage.isBlank()) {
+			html.append("<p class=\"account-error\">").append(escapeHtml(errorMessage)).append("</p>");
+		}
+
+		html.append("<form class=\"account-form\" method=\"post\" action=\"/start-game\">");
+		html.append("<label for=\"accountName\">名前</label>");
+		html.append("<input id=\"accountName\" name=\"accountName\" type=\"text\" maxlength=\"30\" required>");
+		html.append("<button class=\"start-button\" type=\"submit\">喫煙人生スタート</button>");
+		html.append("</form>");
+		html.append("</section>");
+		html.append("</main>");
+		appendPageEnd(html);
+		return html.toString();
+	}
+
 	public static String createAgeCheckPage() {
 		StringBuilder html = new StringBuilder();
 
@@ -285,12 +358,17 @@ public class VendingMachinePage {
 		html.append("<div class=\"status-card nicotine-status\"><span class=\"status-label\">ニコチンメーター</span><strong id=\"nicotineStatus\">")
 				.append(displayNicotine).append("/100</strong>");
 		html.append("<div class=\"nicotine-bar\"><span id=\"nicotineBar\" class=\"")
-				.append(displayNicotine <= 20 ? "danger" : "normal")
+				.append(getNicotineBarClass(gameState, displayNicotine))
 				.append("\" style=\"width:")
 				.append(displayNicotine).append("%;\"></span></div></div>");
-		html.append("<div class=\"status-card\"><span class=\"status-label\">進行</span><strong>")
-				.append(gameState.getDay()).append("日目 / ")
-				.append(gameState.getActionCount()).append("回</strong></div>");
+		html.append("<div class=\"status-card\"><span class=\"status-label\">進行</span><strong>");
+		if (gameState.isGameClear()) {
+			html.append("Goal！！ / ").append(getClearTitle(gameState));
+		} else {
+			html.append(gameState.getDay()).append("日目 / ")
+					.append(gameState.getActionCount()).append("回");
+		}
+		html.append("</strong></div>");
 		html.append("</div>");
 		if (gameState.isGameFinished()) {
 			html.append("<p class=\"finished-message\">ゲーム終了</p>");
@@ -317,6 +395,18 @@ public class VendingMachinePage {
 		return statusStartNicotine;
 	}
 
+	private static String getNicotineBarClass(GameState gameState, int displayNicotine) {
+		if (displayNicotine == 100 && gameState.isNicotineGold()) {
+			return "gold";
+		}
+
+		if (displayNicotine <= 20) {
+			return "danger";
+		}
+
+		return "normal";
+	}
+
 	private static void appendGameScreen(
 			StringBuilder html,
 			GameState gameState,
@@ -338,6 +428,8 @@ public class VendingMachinePage {
 			html.append("<img id=\"gameImage\" class=\"game-image\" src=\"/images/smoking.png\" alt=\"喫煙中\">");
 		} else if (gameState.isDayAdvanced()) {
 			html.append("<img id=\"gameImage\" class=\"game-image\" src=\"/images/goHome.png\" alt=\"帰宅中\">");
+		} else if (gameState.isGameClear()) {
+			html.append("<img id=\"gameImage\" class=\"game-image\" src=\"/images/goal.png\" alt=\"ゴール\">");
 		} else if (gameState.isGameOver()) {
 			html.append("<img class=\"game-image\" src=\"/images/gameOver.png\" alt=\"ゲームオーバー\">");
 		} else if (gameState.isNicotineShortage()) {
@@ -419,6 +511,7 @@ public class VendingMachinePage {
 			html.append("<script>");
 			html.append("window.finalMoney=").append(gameState.getMoney()).append(";");
 			html.append("window.finalNicotine=").append(gameState.getNicotine()).append(";");
+			html.append("window.finalNicotineGold=").append(gameState.isNicotineGold()).append(";");
 			html.append("window.statusUpdateDelay=")
 					.append(getStatusUpdateDelay(gameState, showPachinkoResult, showExploreResult, showSmokeResult, showPurchaseResult))
 					.append(";");
@@ -456,11 +549,35 @@ public class VendingMachinePage {
 	}
 
 	private static String getIdleImage(GameState gameState) {
+		if (gameState.isGameClear()) {
+			return "goal.png";
+		}
+
 		if (gameState.isNicotineShortage() && !gameState.isGameFinished()) {
 			return "nicotineOut.png";
 		}
 
 		return "start.png";
+	}
+
+	private static String getClearTitle(GameState gameState) {
+		if (gameState.getMoney() >= 5000) {
+			return "伝説のヤニカス";
+		}
+
+		if (gameState.getMoney() >= 3000) {
+			return "ベテランヤニカス";
+		}
+
+		return "見習いヤニカス";
+	}
+
+	private static String getDisplayTitle(String title) {
+		if (title == null || "null".equalsIgnoreCase(title)) {
+			return "";
+		}
+
+		return title;
 	}
 
 	private static String getSmokeStartText(String message) {
@@ -563,6 +680,12 @@ public class VendingMachinePage {
 		appendAgeConfirmedInput(html);
 		html.append("<button class=\"quit-button\" type=\"submit\">禁煙する</button>");
 		html.append("</form>");
+		if (gameState.isGameFinished()) {
+			html.append("<form class=\"restart-form\" method=\"post\" action=\"/restart\">");
+			appendAgeConfirmedInput(html);
+			html.append("<button class=\"restart-button\" type=\"submit\">リスタート</button>");
+			html.append("</form>");
+		}
 		html.append("</aside>");
 	}
 
@@ -743,9 +866,12 @@ public class VendingMachinePage {
 		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
 		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
 		html.append(".nicotine-bar span.danger{background:#ef4444;}");
+		html.append(".nicotine-bar span.gold{background:#facc15;}");
 		html.append(".finished-message{display:inline-block;margin:14px 0 0;padding:6px 10px;background:#dc2626;color:#fff;border-radius:6px;font-weight:bold;}");
 		html.append(".quit-form{margin-top:auto;}");
 		html.append(".quit-button{padding:10px 18px;border:1px solid #dc2626;border-radius:6px;background:#dc2626;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".restart-form{margin-top:10px;}");
+		html.append(".restart-button{width:100%;padding:12px 14px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
 		html.append(".bottom-area{display:grid;grid-template-columns:240px minmax(0,1fr) 310px;gap:16px;min-height:0;padding-top:16px;box-sizing:border-box;}");
 		html.append(".action-area,.inventory-area{background:#1f2937;border:3px solid #374151;border-radius:10px;padding:16px;color:#f9fafb;box-sizing:border-box;min-height:0;overflow:auto;}");
@@ -789,6 +915,20 @@ public class VendingMachinePage {
 		html.append(".pachinko-jackpot{background:#fef3c7;border-color:#f59e0b;}");
 		html.append(".pachinko-hot{background:#fee2e2;border-color:#ef4444;}");
 		html.append(".pachinko-disabled{background:#f3f4f6;border-color:#6b7280;}");
+		html.append(".ranking-page,.account-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;color:#111827;}");
+		html.append(".ranking-panel{width:min(980px,100%);max-height:86vh;overflow:auto;background:#f9fafb;border:3px solid #374151;border-radius:10px;padding:24px;box-sizing:border-box;}");
+		html.append(".ranking-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;}");
+		html.append(".ranking-header h1{margin:0;}");
+		html.append(".ranking-empty{margin:0;color:#6b7280;font-weight:bold;}");
+		html.append(".ranking-table{width:100%;border-collapse:collapse;background:#fff;}");
+		html.append(".ranking-table th,.ranking-table td{border:1px solid #d1d5db;padding:10px;text-align:left;}");
+		html.append(".ranking-table th{background:#1f2937;color:#f9fafb;}");
+		html.append(".account-panel{width:min(420px,calc(100vw - 48px));background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;box-sizing:border-box;}");
+		html.append(".account-form{display:grid;gap:12px;}");
+		html.append(".account-form label{font-weight:bold;}");
+		html.append(".account-form input{padding:10px;border:1px solid #6b7280;border-radius:6px;font-size:16px;}");
+		html.append(".account-error{margin:0 0 12px;padding:10px;background:#fee2e2;color:#991b1b;border-radius:6px;font-weight:bold;}");
+		html.append(".start-button{padding:10px 18px;border:1px solid #22c55e;border-radius:6px;background:#22c55e;color:#052e16;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".age-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100vw - 48px));background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;box-sizing:border-box;}");
 		html.append(".age-actions{display:flex;gap:12px;}");
 		html.append(".age-button{padding:10px 18px;border:1px solid #8c959f;border-radius:6px;background:#fff;color:#24292f;font-size:15px;cursor:pointer;}");
@@ -840,15 +980,16 @@ public class VendingMachinePage {
 	private static void appendPageEnd(StringBuilder html) {
 		html.append("<script>");
 		html.append("function getIdleImage(){return window.idleImage||'/images/start.png';}");
+		html.append("function setActionButtonsDisabled(disabled){document.querySelectorAll('.action-area button').forEach(function(button){if(disabled){if(!button.disabled){button.disabled=true;button.setAttribute('data-transition-disabled','true');}}else if(button.getAttribute('data-transition-disabled')==='true'){button.disabled=false;button.removeAttribute('data-transition-disabled');}});}");
 		html.append("function openVendingModal(){var image=document.getElementById('gameImage');var text=document.getElementById('screenText');if(image){image.src='/images/goToBuy.png';}if(text){text.textContent='自販機発見';}setTimeout(function(){document.getElementById('vendingModal').classList.add('open');if(image){image.src=getIdleImage();}if(text){text.textContent='';}},1000);}");
 		html.append("function closeVendingModal(){document.getElementById('vendingModal').classList.remove('open');}");
 		html.append("function closePachinkoResultModal(){document.getElementById('pachinkoResultModal').classList.remove('open');}");
 		html.append("if(window.exploreResultImage){setTimeout(function(){document.getElementById('gameImage').src=window.exploreResultImage;document.getElementById('screenText').textContent=window.exploreResultText;},1000);if(!window.dayTransitionText){setTimeout(function(){document.getElementById('gameImage').src=getIdleImage();document.getElementById('screenText').textContent='';},2000);}}");
 		html.append("if(window.pachinkoResultImage){var pachinkoDuration=window.pachinkoResultDuration||1000;setTimeout(function(){document.getElementById('gameImage').src=window.pachinkoResultImage;document.getElementById('screenText').textContent=window.pachinkoResultText;},1000);if(!window.dayTransitionText){setTimeout(function(){document.getElementById('gameImage').src=getIdleImage();document.getElementById('screenText').textContent='';},1000+pachinkoDuration);}}");
-		html.append("if(window.dayTransitionText){var resultDuration=window.pachinkoResultImage?(window.pachinkoResultDuration||1000):1000;var dayDelay=(window.exploreResultImage||window.pachinkoResultImage)?1000+resultDuration:0;setTimeout(function(){document.getElementById('gameImage').src='/images/goHome.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay);setTimeout(function(){document.getElementById('gameImage').src='/images/sleep.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay+1000);setTimeout(function(){document.getElementById('gameImage').src='/images/wakeUp.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay+2000);setTimeout(function(){document.getElementById('gameImage').src=getIdleImage();document.getElementById('screenText').textContent='';},dayDelay+3000);}");
+		html.append("if(window.dayTransitionText){var resultDuration=window.pachinkoResultImage?(window.pachinkoResultDuration||1000):1000;var dayDelay=(window.exploreResultImage||window.pachinkoResultImage)?1000+resultDuration:0;setTimeout(function(){setActionButtonsDisabled(true);document.getElementById('gameImage').src='/images/goHome.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay);setTimeout(function(){document.getElementById('gameImage').src='/images/sleep.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay+1000);setTimeout(function(){document.getElementById('gameImage').src='/images/wakeUp.png';document.getElementById('screenText').textContent=window.dayTransitionText;},dayDelay+2000);setTimeout(function(){document.getElementById('gameImage').src=getIdleImage();document.getElementById('screenText').textContent='';setActionButtonsDisabled(false);},dayDelay+3000);}");
 		html.append("if(window.smokeResultImage){setTimeout(function(){document.getElementById('gameImage').src=window.smokeResultImage;document.getElementById('screenText').textContent=window.smokeResultText;},1000);setTimeout(function(){document.getElementById('gameImage').src=getIdleImage();document.getElementById('screenText').textContent='';},2000);}");
 		html.append("if(window.purchaseResultText){setTimeout(function(){document.getElementById('screenText').textContent='';},1000);}");
-		html.append("if(window.statusUpdateDelay!==undefined){setTimeout(function(){var money=document.getElementById('moneyStatus');var nicotine=document.getElementById('nicotineStatus');var bar=document.getElementById('nicotineBar');if(money){money.textContent=window.finalMoney+'円';}if(nicotine){nicotine.textContent=window.finalNicotine+'/100';}if(bar){bar.style.width=window.finalNicotine+'%';bar.className=window.finalNicotine<=20?'danger':'normal';}},window.statusUpdateDelay);}");
+		html.append("if(window.statusUpdateDelay!==undefined){setTimeout(function(){var money=document.getElementById('moneyStatus');var nicotine=document.getElementById('nicotineStatus');var bar=document.getElementById('nicotineBar');if(money){money.textContent=window.finalMoney+'円';}if(nicotine){nicotine.textContent=window.finalNicotine+'/100';}if(bar){bar.style.width=window.finalNicotine+'%';bar.className=window.finalNicotine===100&&window.finalNicotineGold?'gold':(window.finalNicotine<=20?'danger':'normal');}},window.statusUpdateDelay);}");
 		html.append("if(window.finalInventoryHtml!==undefined){var inventoryDelay=window.statusUpdateDelay!==undefined?window.statusUpdateDelay:2000;setTimeout(function(){var box=document.getElementById('inventoryBox');if(box){box.innerHTML=window.finalInventoryHtml;}},inventoryDelay);}");
 		html.append("</script>");
 		html.append("</body>");
