@@ -13,6 +13,8 @@ public class GameState {
 	private int day = 1;
 	private int actionCount = 0;
 	private boolean gameOver = false;
+	private boolean dayAdvanced = false;
+	private int survivedDay = 0;
 	private String message = INITIAL_MESSAGE;
 	private ArrayList<InventoryItem> inventory = new ArrayList<InventoryItem>();
 
@@ -42,6 +44,19 @@ public class GameState {
 
 	public String getMessage() {
 		return message;
+	}
+
+	public boolean isDayAdvanced() {
+		return dayAdvanced;
+	}
+
+	public int getSurvivedDay() {
+		return survivedDay;
+	}
+
+	public void clearDayAdvanced() {
+		dayAdvanced = false;
+		survivedDay = 0;
 	}
 
 	public ArrayList<InventoryItem> getInventory() {
@@ -81,8 +96,10 @@ public class GameState {
 			return;
 		}
 
+		dayAdvanced = false;
+		survivedDay = 0;
 		actionCount++;
-		decreaseNicotine(5);
+		decreaseNicotine(10);
 
 		if (nicotine == 0) {
 			gameOver = true;
@@ -91,8 +108,10 @@ public class GameState {
 		}
 
 		if (actionCount >= 20) {
+			survivedDay = day;
 			day++;
 			actionCount = 0;
+			dayAdvanced = true;
 		}
 
 		if (isGameClear()) {
@@ -145,7 +164,14 @@ public class GameState {
 		day = 1;
 		actionCount = 0;
 		gameOver = false;
+		dayAdvanced = false;
+		survivedDay = 0;
 		message = INITIAL_MESSAGE;
 		inventory.clear();
+	}
+
+	public void quitSmoking() {
+		gameOver = true;
+		message = "ゲームオーバー";
 	}
 }

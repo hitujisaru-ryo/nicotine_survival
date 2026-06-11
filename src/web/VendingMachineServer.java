@@ -30,6 +30,11 @@ public class VendingMachineServer {
 	private static GameState gameState = new GameState();
 	private static GameService gameService = new GameService();
 	private static boolean showPachinkoResult;
+	private static boolean showExploreResult;
+	private static boolean showSmokeResult;
+	private static boolean showPurchaseResult;
+	private static Integer statusStartMoney;
+	private static Integer statusStartNicotine;
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
@@ -43,6 +48,7 @@ public class VendingMachineServer {
 		server.createContext("/pachinko", VendingMachineServer::handlePachinko);
 		server.createContext("/smoke", VendingMachineServer::handleSmoke);
 		server.createContext("/reset", VendingMachineServer::handleReset);
+		server.createContext("/quit-smoking", VendingMachineServer::handleQuitSmoking);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
 		server.start();
@@ -190,9 +196,15 @@ public class VendingMachineServer {
 
 		try {
 			int productId = Integer.parseInt(idText);
-			purchaseProduct(productId);
+			rememberStatusBeforeAction();
+			showPurchaseResult = purchaseProduct(productId);
+			if (!showPurchaseResult) {
+				clearStatusBeforeAction();
+			}
 		} catch (NumberFormatException e) {
 			message = "該当する商品がありません";
+			showPurchaseResult = false;
+			clearStatusBeforeAction();
 		}
 
 		sendProductListResponse(exchange);
@@ -212,7 +224,9 @@ public class VendingMachineServer {
 		}
 
 		ProductDAO dao = new ProductDAO();
+		rememberStatusBeforeAction();
 		gameService.explore(gameState, dao.searchAllProducts());
+		showExploreResult = true;
 		sendProductListResponse(exchange);
 	}
 
@@ -229,6 +243,7 @@ public class VendingMachineServer {
 			return;
 		}
 
+		rememberStatusBeforeAction();
 		gameService.pachinko(gameState);
 		showPachinkoResult = true;
 		sendProductListResponse(exchange);
@@ -251,9 +266,12 @@ public class VendingMachineServer {
 
 		try {
 			int productId = Integer.parseInt(idText);
+			rememberStatusBeforeAction();
 			gameService.smoke(gameState, productId);
+			showSmokeResult = true;
 		} catch (NumberFormatException e) {
 			gameState.setMessage("吸えるたばこがありません");
+			clearStatusBeforeAction();
 		}
 
 		sendProductListResponse(exchange);
@@ -278,10 +296,28 @@ public class VendingMachineServer {
 		sendProductListResponse(exchange);
 	}
 
-	private static void purchaseProduct(int productId) {
+	private static void handleQuitSmoking(HttpExchange exchange) throws IOException {
+		if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+		if (!isAgeConfirmed(requestBody)) {
+			redirectToIndex(exchange);
+			return;
+		}
+
+		gameState.quitSmoking();
+		message = null;
+		sendProductListResponse(exchange);
+	}
+
+	private static boolean purchaseProduct(int productId) {
 		if (gameState.isGameFinished()) {
 			message = "ゲーム終了しています";
-			return;
+			return false;
 		}
 
 		ProductDAO dao = new ProductDAO();
@@ -289,17 +325,17 @@ public class VendingMachineServer {
 
 		if (product == null) {
 			message = "該当する商品がありません";
-			return;
+			return false;
 		}
 
 		if (product.getQuantity() == 0) {
 			message = "売り切れです";
-			return;
+			return false;
 		}
 
 		if (gameState.getMoney() < product.getPrice()) {
 			message = "所持金不足";
-			return;
+			return false;
 		}
 
 		gameState.subtractMoney(product.getPrice());
@@ -308,6 +344,7 @@ public class VendingMachineServer {
 		gameState.addProductToInventory(product);
 		purchasedProducts.add(product.getId() + "," + product.getName());
 		message = product.getName() + "を購入した";
+		return true;
 	}
 
 	private static void handleImage(HttpExchange exchange) throws IOException {
@@ -389,10 +426,30 @@ public class VendingMachineServer {
 				productIdsWithImage,
 				purchasedProducts,
 				gameState,
-				showPachinkoResult);
+				showPachinkoResult,
+				showExploreResult,
+				showSmokeResult,
+				showPurchaseResult,
+				statusStartMoney,
+				statusStartNicotine);
 		showPachinkoResult = false;
+		showExploreResult = false;
+		showSmokeResult = false;
+		showPurchaseResult = false;
+		clearStatusBeforeAction();
+		gameState.clearDayAdvanced();
 
 		sendTextResponse(exchange, 200, html);
+	}
+
+	private static void rememberStatusBeforeAction() {
+		statusStartMoney = gameState.getMoney();
+		statusStartNicotine = gameState.getNicotine();
+	}
+
+	private static void clearStatusBeforeAction() {
+		statusStartMoney = null;
+		statusStartNicotine = null;
 	}
 
 	private static Set<Integer> findProductIdsWithImage(ArrayList<Product> products) {

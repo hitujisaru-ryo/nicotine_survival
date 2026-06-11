@@ -76,15 +76,10 @@ public class GameService {
 		int smokedPieces = Math.min(5, targetItem.getRemainingPieces());
 		targetItem.decreaseRemainingPieces(smokedPieces);
 		gameState.increaseNicotine(targetItem.getNicotine());
-		gameState.advanceAction();
 		boolean empty = targetItem.getRemainingPieces() == 0;
 
 		if (empty) {
 			gameState.getInventory().remove(targetItem);
-		}
-
-		if (gameState.isGameFinished()) {
-			return;
 		}
 
 		if (empty) {
