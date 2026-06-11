@@ -16,6 +16,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import bean.Product;
 import dao.ProductDAO;
+import game.GameState;
 
 public class VendingMachineServer {
 
@@ -25,6 +26,7 @@ public class VendingMachineServer {
 	private static int insertedMoney;
 	private static String message;
 	private static ArrayList<String> purchasedProducts = new ArrayList<String>();
+	private static GameState gameState = new GameState();
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
@@ -292,7 +294,8 @@ public class VendingMachineServer {
 				insertedMoney,
 				message,
 				productIdsWithImage,
-				purchasedProducts);
+				purchasedProducts,
+				gameState);
 
 		sendTextResponse(exchange, 200, html);
 	}

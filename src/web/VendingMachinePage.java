@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Set;
 
 import bean.Product;
+import game.GameState;
 
 public class VendingMachinePage {
 
@@ -47,10 +48,12 @@ public class VendingMachinePage {
 			int insertedMoney,
 			String message,
 			Set<Integer> productIdsWithImage,
-			ArrayList<String> purchasedProducts) {
+			ArrayList<String> purchasedProducts,
+			GameState gameState) {
 		StringBuilder html = new StringBuilder();
 
 		appendPageStart(html, "Web自動販売機");
+		appendGameStatus(html, gameState);
 		html.append("<h1>Web自動販売機</h1>");
 		html.append("<main class=\"main-layout\">");
 		html.append("<section class=\"products-area\">");
@@ -114,6 +117,25 @@ public class VendingMachinePage {
 		appendPageEnd(html);
 
 		return html.toString();
+	}
+
+	private static void appendGameStatus(StringBuilder html, GameState gameState) {
+		html.append("<section class=\"game-status\">");
+		html.append("<h1>ニコチン・サバイバル</h1>");
+		html.append("<div class=\"status-grid\">");
+		html.append("<div><span class=\"status-label\">所持金</span><strong>")
+				.append(gameState.getMoney()).append("円</strong></div>");
+		html.append("<div><span class=\"status-label\">ニコチン</span><strong>")
+				.append(gameState.getNicotine()).append("/100</strong>");
+		html.append("<div class=\"nicotine-bar\"><span style=\"width:")
+				.append(gameState.getNicotine()).append("%;\"></span></div></div>");
+		html.append("<div><span class=\"status-label\">現在日</span><strong>")
+				.append(gameState.getDay()).append("日目</strong></div>");
+		html.append("<div><span class=\"status-label\">行動回数</span><strong>")
+				.append(gameState.getActionCount()).append("回</strong></div>");
+		html.append("</div>");
+		html.append("<p class=\"game-message\">").append(escapeHtml(gameState.getMessage())).append("</p>");
+		html.append("</section>");
 	}
 
 	private static void appendControlPanel(
@@ -218,6 +240,14 @@ public class VendingMachinePage {
 		html.append("body{font-family:Arial,'Meiryo',sans-serif;margin:24px;background:#4b5563;color:#222;}");
 		html.append("h1{font-size:28px;margin:0 0 24px;}");
 		html.append("h2{font-size:20px;margin:0 0 16px;}");
+		html.append(".game-status{background:#111827;color:#f9fafb;border:4px solid #0f172a;border-radius:10px;padding:18px;margin-bottom:20px;}");
+		html.append(".game-status h1{margin-bottom:16px;}");
+		html.append(".status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}");
+		html.append(".status-grid div{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:10px;}");
+		html.append(".status-label{display:block;color:#9ca3af;font-size:13px;margin-bottom:4px;}");
+		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
+		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
+		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
 		html.append(".main-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start;}");
 		html.append(".products-area{background:#1f2937;border:6px solid #111827;border-radius:10px;padding:18px;}");
 		html.append(".products-area h2{color:#fff;}");
