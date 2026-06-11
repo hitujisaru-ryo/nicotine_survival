@@ -57,13 +57,38 @@ public class VendingMachinePage {
 		appendGameStatus(html, gameState, productIdsWithImage);
 		html.append("<main class=\"game-layout\">");
 		appendActionArea(html, gameState);
-		html.append("<section class=\"vending-area\">");
-		html.append("<h2>自販機</h2>");
+		html.append("<section class=\"main-stage\">");
 
 		if (message != null && !message.isEmpty()) {
 			html.append("<p class=\"message\">").append(escapeHtml(message)).append("</p>");
 		}
 
+		html.append("<div class=\"stage-card\">");
+		html.append("<h2>行動を選んでください</h2>");
+		html.append("<p>左のアクションから探索やパチンコを選べます。たばこを買うときは自販機ボタンを押してください。</p>");
+		html.append("</div>");
+		html.append("</section>");
+		html.append("<aside class=\"inventory-area\">");
+		appendInventory(html, gameState, productIdsWithImage);
+		html.append("</aside>");
+		html.append("</main>");
+		appendVendingModal(html, products, productIdsWithImage, gameState);
+		appendPageEnd(html);
+
+		return html.toString();
+	}
+
+	private static void appendVendingModal(
+			StringBuilder html,
+			ArrayList<Product> products,
+			Set<Integer> productIdsWithImage,
+			GameState gameState) {
+		html.append("<div id=\"vendingModal\" class=\"modal-overlay\">");
+		html.append("<section class=\"vending-modal\">");
+		html.append("<div class=\"modal-header\">");
+		html.append("<h2>自販機</h2>");
+		html.append("<button class=\"close-button\" type=\"button\" onclick=\"closeVendingModal()\">閉じる</button>");
+		html.append("</div>");
 		html.append("<div class=\"product-grid\">");
 
 		for (Product product : products) {
@@ -119,13 +144,7 @@ public class VendingMachinePage {
 
 		html.append("</div>");
 		html.append("</section>");
-		html.append("<aside class=\"inventory-area\">");
-		appendInventory(html, gameState, productIdsWithImage);
-		html.append("</aside>");
-		html.append("</main>");
-		appendPageEnd(html);
-
-		return html.toString();
+		html.append("</div>");
 	}
 
 	private static void appendGameStatus(StringBuilder html, GameState gameState, Set<Integer> productIdsWithImage) {
@@ -173,6 +192,11 @@ public class VendingMachinePage {
 		html.append("</form>");
 		html.append("</div>");
 		html.append("<p class=\"action-help\">パチンコは100円以上持っていると挑戦できます。勝てば所持金が増えます。</p>");
+		if (gameState.isGameFinished()) {
+			html.append("<button class=\"vending-button\" type=\"button\" disabled>自販機</button>");
+		} else {
+			html.append("<button class=\"vending-button\" type=\"button\" onclick=\"openVendingModal()\">自販機</button>");
+		}
 		html.append("<form class=\"reset-form\" method=\"post\" action=\"/reset\">");
 		appendAgeConfirmedInput(html);
 		html.append("<button class=\"reset-button\" type=\"submit\">最初からやり直す</button>");
@@ -335,16 +359,19 @@ public class VendingMachinePage {
 		html.append(".reset-button{padding:10px 18px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
 		html.append(".game-layout{display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:18px;align-items:start;}");
-		html.append(".action-area,.vending-area,.inventory-area{background:#1f2937;border:3px solid #374151;border-radius:10px;padding:16px;color:#f9fafb;}");
+		html.append(".action-area,.main-stage,.inventory-area{background:#1f2937;border:3px solid #374151;border-radius:10px;padding:16px;color:#f9fafb;}");
 		html.append(".action-area{position:sticky;top:18px;}");
 		html.append(".action-help{margin:0 0 14px;color:#d1d5db;font-size:13px;line-height:1.6;}");
 		html.append(".game-actions{display:grid;gap:10px;margin:14px 0;}");
 		html.append(".explore-form,.pachinko-form{margin:0;}");
-		html.append(".explore-button,.pachinko-button,.reset-button{width:100%;padding:12px 14px;border-radius:6px;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".explore-button,.pachinko-button,.vending-button,.reset-button{width:100%;padding:12px 14px;border-radius:6px;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".explore-button{border:1px solid #22c55e;background:#22c55e;color:#052e16;}");
 		html.append(".pachinko-button{border:1px solid #f97316;background:#f97316;color:#431407;}");
+		html.append(".vending-button{border:1px solid #38bdf8;background:#38bdf8;color:#082f49;}");
 		html.append(".reset-button{border:1px solid #2563eb;background:#2563eb;color:#fff;}");
-		html.append(".explore-button:disabled,.pachinko-button:disabled,.smoke-button:disabled{border-color:#6b7280;background:#6b7280;color:#d1d5db;cursor:not-allowed;}");
+		html.append(".explore-button:disabled,.pachinko-button:disabled,.vending-button:disabled,.smoke-button:disabled{border-color:#6b7280;background:#6b7280;color:#d1d5db;cursor:not-allowed;}");
+		html.append(".stage-card{background:#0f172a;border:1px solid #374151;border-radius:8px;padding:18px;}");
+		html.append(".stage-card p{margin:0;color:#d1d5db;line-height:1.7;}");
 		html.append(".inventory-box{margin:0;}");
 		html.append(".inventory-box h2{color:#f9fafb;margin-bottom:10px;}");
 		html.append(".inventory-empty{margin:0;color:#9ca3af;}");
@@ -355,7 +382,12 @@ public class VendingMachinePage {
 		html.append(".inventory-thumb img{width:100%;height:100%;object-fit:contain;display:block;}");
 		html.append(".smoke-form{margin:0;}");
 		html.append(".smoke-button{padding:7px 10px;border:1px solid #eab308;border-radius:6px;background:#eab308;color:#422006;font-weight:bold;cursor:pointer;}");
-		html.append(".vending-area h2{color:#fff;}");
+		html.append(".modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:10;align-items:center;justify-content:center;padding:24px;}");
+		html.append(".modal-overlay.open{display:flex;}");
+		html.append(".vending-modal{width:min(1040px,96vw);max-height:88vh;overflow:auto;background:#1f2937;border:3px solid #9ca3af;border-radius:10px;padding:16px;color:#f9fafb;}");
+		html.append(".modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}");
+		html.append(".modal-header h2{margin:0;color:#fff;}");
+		html.append(".close-button{padding:8px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;color:#111827;font-weight:bold;cursor:pointer;}");
 		html.append(".age-panel{max-width:420px;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;}");
 		html.append(".age-actions{display:flex;gap:12px;}");
 		html.append(".age-button{padding:10px 18px;border:1px solid #8c959f;border-radius:6px;background:#fff;color:#24292f;font-size:15px;cursor:pointer;}");
@@ -405,6 +437,10 @@ public class VendingMachinePage {
 	}
 
 	private static void appendPageEnd(StringBuilder html) {
+		html.append("<script>");
+		html.append("function openVendingModal(){document.getElementById('vendingModal').classList.add('open');}");
+		html.append("function closeVendingModal(){document.getElementById('vendingModal').classList.remove('open');}");
+		html.append("</script>");
 		html.append("</body>");
 		html.append("</html>");
 	}
