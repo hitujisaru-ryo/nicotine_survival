@@ -53,12 +53,12 @@ public class VendingMachinePage {
 			GameState gameState) {
 		StringBuilder html = new StringBuilder();
 
-		appendPageStart(html, "Web自動販売機");
+		appendPageStart(html, "ニコチン・サバイバル");
 		appendGameStatus(html, gameState, productIdsWithImage);
-		html.append("<h1>Web自動販売機</h1>");
-		html.append("<main class=\"main-layout\">");
-		html.append("<section class=\"products-area\">");
-		html.append("<h2>商品一覧</h2>");
+		html.append("<main class=\"game-layout\">");
+		appendActionArea(html, gameState);
+		html.append("<section class=\"vending-area\">");
+		html.append("<h2>自販機</h2>");
 
 		if (message != null && !message.isEmpty()) {
 			html.append("<p class=\"message\">").append(escapeHtml(message)).append("</p>");
@@ -93,6 +93,8 @@ public class VendingMachinePage {
 					.append(product.getPrice()).append("円</span></div>");
 			html.append("<div class=\"product-info\"><span class=\"label\">数量</span><span>")
 					.append(product.getQuantity()).append("</span></div>");
+			html.append("<div class=\"product-info\"><span class=\"label\">ニコチン回復</span><span>")
+					.append(product.getNicotine()).append("</span></div>");
 
 			if (gameFinished) {
 				html.append("<span class=\"finished-label\">ゲーム終了</span>");
@@ -117,7 +119,9 @@ public class VendingMachinePage {
 
 		html.append("</div>");
 		html.append("</section>");
-		appendControlPanel(html, currentMoney, insertedMoney, purchasedProducts);
+		html.append("<aside class=\"inventory-area\">");
+		appendInventory(html, gameState, productIdsWithImage);
+		html.append("</aside>");
 		html.append("</main>");
 		appendPageEnd(html);
 
@@ -141,12 +145,15 @@ public class VendingMachinePage {
 		html.append("</div>");
 		if (gameState.isGameFinished()) {
 			html.append("<p class=\"finished-message\">ゲーム終了</p>");
-			html.append("<form class=\"reset-form\" method=\"post\" action=\"/reset\">");
-			appendAgeConfirmedInput(html);
-			html.append("<button class=\"reset-button\" type=\"submit\">最初からやり直す</button>");
-			html.append("</form>");
 		}
 		html.append("<p class=\"game-message\">").append(escapeHtml(gameState.getMessage())).append("</p>");
+		html.append("</section>");
+	}
+
+	private static void appendActionArea(StringBuilder html, GameState gameState) {
+		html.append("<aside class=\"action-area\">");
+		html.append("<h2>アクション</h2>");
+		html.append("<p class=\"action-help\">探索するとお金や未開封のたばこを見つけることがあります。行動するとニコチンが減ります。</p>");
 		html.append("<div class=\"game-actions\">");
 		html.append("<form class=\"explore-form\" method=\"post\" action=\"/explore\">");
 		appendAgeConfirmedInput(html);
@@ -165,8 +172,12 @@ public class VendingMachinePage {
 		}
 		html.append("</form>");
 		html.append("</div>");
-		appendInventory(html, gameState, productIdsWithImage);
-		html.append("</section>");
+		html.append("<p class=\"action-help\">パチンコは100円以上持っていると挑戦できます。勝てば所持金が増えます。</p>");
+		html.append("<form class=\"reset-form\" method=\"post\" action=\"/reset\">");
+		appendAgeConfirmedInput(html);
+		html.append("<button class=\"reset-button\" type=\"submit\">最初からやり直す</button>");
+		html.append("</form>");
+		html.append("</aside>");
 	}
 
 	private static void appendInventory(StringBuilder html, GameState gameState, Set<Integer> productIdsWithImage) {
@@ -174,7 +185,7 @@ public class VendingMachinePage {
 		html.append("<h2>持ち物</h2>");
 
 		if (gameState.getInventory().isEmpty()) {
-			html.append("<p class=\"inventory-empty\">まだ何も持っていません</p>");
+			html.append("<p class=\"inventory-empty\">持ち物はありません</p>");
 		} else {
 			html.append("<ul class=\"inventory-list\">");
 
@@ -309,13 +320,13 @@ public class VendingMachinePage {
 		html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
 		html.append("<title>").append(escapeHtml(title)).append("</title>");
 		html.append("<style>");
-		html.append("body{font-family:Arial,'Meiryo',sans-serif;margin:24px;background:#4b5563;color:#222;}");
+		html.append("body{font-family:Arial,'Meiryo',sans-serif;margin:24px;background:#111827;color:#111827;}");
 		html.append("h1{font-size:28px;margin:0 0 24px;}");
 		html.append("h2{font-size:20px;margin:0 0 16px;}");
-		html.append(".game-status{background:#111827;color:#f9fafb;border:4px solid #0f172a;border-radius:10px;padding:18px;margin-bottom:20px;}");
+		html.append(".game-status{background:#172033;color:#f9fafb;border:3px solid #374151;border-radius:10px;padding:18px;margin-bottom:20px;}");
 		html.append(".game-status h1{margin-bottom:16px;}");
-		html.append(".status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}");
-		html.append(".status-grid div{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:10px;}");
+		html.append(".status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}");
+		html.append(".status-grid div{background:#0f172a;border:1px solid #374151;border-radius:8px;padding:10px;}");
 		html.append(".status-label{display:block;color:#9ca3af;font-size:13px;margin-bottom:4px;}");
 		html.append(".nicotine-bar{height:10px;background:#374151;border-radius:999px;margin-top:8px;overflow:hidden;}");
 		html.append(".nicotine-bar span{display:block;height:100%;background:#22c55e;}");
@@ -323,24 +334,28 @@ public class VendingMachinePage {
 		html.append(".reset-form{margin:12px 0 0;}");
 		html.append(".reset-button{padding:10px 18px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}");
 		html.append(".game-message{margin:14px 0 0;padding:10px;background:#facc15;color:#111827;border-radius:6px;font-weight:bold;}");
-		html.append(".game-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0;}");
+		html.append(".game-layout{display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:18px;align-items:start;}");
+		html.append(".action-area,.vending-area,.inventory-area{background:#1f2937;border:3px solid #374151;border-radius:10px;padding:16px;color:#f9fafb;}");
+		html.append(".action-area{position:sticky;top:18px;}");
+		html.append(".action-help{margin:0 0 14px;color:#d1d5db;font-size:13px;line-height:1.6;}");
+		html.append(".game-actions{display:grid;gap:10px;margin:14px 0;}");
 		html.append(".explore-form,.pachinko-form{margin:0;}");
-		html.append(".explore-button{padding:10px 18px;border:1px solid #22c55e;border-radius:6px;background:#22c55e;color:#052e16;font-size:16px;font-weight:bold;cursor:pointer;}");
-		html.append(".pachinko-button{padding:10px 18px;border:1px solid #f97316;border-radius:6px;background:#f97316;color:#431407;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".explore-button,.pachinko-button,.reset-button{width:100%;padding:12px 14px;border-radius:6px;font-size:16px;font-weight:bold;cursor:pointer;}");
+		html.append(".explore-button{border:1px solid #22c55e;background:#22c55e;color:#052e16;}");
+		html.append(".pachinko-button{border:1px solid #f97316;background:#f97316;color:#431407;}");
+		html.append(".reset-button{border:1px solid #2563eb;background:#2563eb;color:#fff;}");
 		html.append(".explore-button:disabled,.pachinko-button:disabled,.smoke-button:disabled{border-color:#6b7280;background:#6b7280;color:#d1d5db;cursor:not-allowed;}");
-		html.append(".inventory-box{margin-top:16px;border-top:1px solid #374151;padding-top:14px;}");
+		html.append(".inventory-box{margin:0;}");
 		html.append(".inventory-box h2{color:#f9fafb;margin-bottom:10px;}");
 		html.append(".inventory-empty{margin:0;color:#9ca3af;}");
-		html.append(".inventory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0;padding:0;list-style:none;}");
+		html.append(".inventory-list{display:grid;gap:10px;margin:0;padding:0;list-style:none;}");
 		html.append(".inventory-item{display:flex;align-items:center;gap:8px;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:8px;}");
 		html.append(".inventory-detail{flex:1;}");
 		html.append(".inventory-thumb{width:42px;height:42px;background:#eef2f6;border:1px solid #9ca3af;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b7280;overflow:hidden;}");
 		html.append(".inventory-thumb img{width:100%;height:100%;object-fit:contain;display:block;}");
 		html.append(".smoke-form{margin:0;}");
 		html.append(".smoke-button{padding:7px 10px;border:1px solid #eab308;border-radius:6px;background:#eab308;color:#422006;font-weight:bold;cursor:pointer;}");
-		html.append(".main-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start;}");
-		html.append(".products-area{background:#1f2937;border:6px solid #111827;border-radius:10px;padding:18px;}");
-		html.append(".products-area h2{color:#fff;}");
+		html.append(".vending-area h2{color:#fff;}");
 		html.append(".age-panel{max-width:420px;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:24px;}");
 		html.append(".age-actions{display:flex;gap:12px;}");
 		html.append(".age-button{padding:10px 18px;border:1px solid #8c959f;border-radius:6px;background:#fff;color:#24292f;font-size:15px;cursor:pointer;}");
@@ -367,9 +382,9 @@ public class VendingMachinePage {
 		html.append(".money-form input{width:150px;padding:9px 10px;border:1px solid #6b7280;border-radius:6px;font-size:15px;}");
 		html.append(".money-form button{padding:8px 14px;border:1px solid #1f6feb;border-radius:6px;background:#1f6feb;color:#fff;font-size:15px;cursor:pointer;}");
 		html.append(".current-money{margin:0;font-weight:bold;}");
-		html.append(".message{max-width:520px;margin:0 0 22px;padding:12px 14px;border:1px solid #bf8700;border-radius:8px;background:#fff8c5;}");
-		html.append(".product-grid{display:grid;grid-template-columns:repeat(5,minmax(128px,1fr));gap:12px;}");
-		html.append(".product-card{background:#fff;border:1px solid #d0d7de;border-radius:8px;overflow:hidden;min-height:316px;display:flex;flex-direction:column;}");
+		html.append(".message{margin:0 0 16px;padding:12px 14px;border:1px solid #bf8700;border-radius:8px;background:#fff8c5;color:#111827;}");
+		html.append(".product-grid{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:14px;}");
+		html.append(".product-card{background:#fff;border:1px solid #d0d7de;border-radius:8px;overflow:hidden;min-height:340px;display:flex;flex-direction:column;color:#111827;}");
 		html.append(".product-card.sold-out{background:#e5e7eb;opacity:.7;}");
 		html.append(".image-box{height:148px;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:14px;}");
 		html.append(".image-box img{width:100%;height:100%;object-fit:contain;display:block;}");
@@ -383,8 +398,7 @@ public class VendingMachinePage {
 		html.append(".purchase-form{margin-top:auto;padding-top:12px;}");
 		html.append(".purchase-button{width:100%;padding:10px 12px;border:1px solid #16a34a;border-radius:6px;background:#16a34a;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;}");
 		html.append(".purchase-button:disabled{border-color:#8c959f;background:#8c959f;cursor:not-allowed;}");
-		html.append("@media(max-width:1180px){.product-grid{grid-template-columns:repeat(4,minmax(128px,1fr));}}");
-		html.append("@media(max-width:980px){.main-layout{grid-template-columns:1fr;}.control-panel{position:static;}.product-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}}");
+		html.append("@media(max-width:1180px){.game-layout{grid-template-columns:210px minmax(0,1fr) 280px;}.product-grid{grid-template-columns:repeat(2,minmax(150px,1fr));}}");
 		html.append("</style>");
 		html.append("</head>");
 		html.append("<body>");
