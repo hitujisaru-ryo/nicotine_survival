@@ -30,6 +30,7 @@ public class VendingMachineServer {
 	private static ArrayList<String> purchasedProducts = new ArrayList<String>();
 	private static GameState gameState = new GameState();
 	private static GameService gameService = new GameService();
+	private static ArrayList<Product> webProducts = new ArrayList<Product>();
 	private static boolean showPachinkoResult;
 	private static boolean showExploreResult;
 	private static boolean showSmokeResult;
@@ -53,6 +54,7 @@ public class VendingMachineServer {
 		server.createContext("/quit-smoking", VendingMachineServer::handleQuitSmoking);
 		server.createContext("/images/", VendingMachineServer::handleImage);
 		server.setExecutor(null);
+		reloadWebProducts();
 		server.start();
 
 		System.out.println("Web自動販売機を起動しました。");
@@ -296,6 +298,7 @@ public class VendingMachineServer {
 		gameState.reset();
 		message = null;
 		purchasedProducts.clear();
+		reloadWebProducts();
 		sendProductListResponse(exchange);
 	}
 
@@ -323,8 +326,7 @@ public class VendingMachineServer {
 			return false;
 		}
 
-		ProductDAO dao = new ProductDAO();
-		Product product = dao.searchProduct(productId);
+		Product product = findWebProduct(productId);
 
 		if (product == null) {
 			message = "該当する商品がありません";
@@ -343,7 +345,6 @@ public class VendingMachineServer {
 
 		gameState.subtractMoney(product.getPrice());
 		product.setQuantity(product.getQuantity() - 1);
-		dao.editProduct(product);
 		gameState.addProductToInventory(product);
 		purchasedProducts.add(product.getId() + "," + product.getName());
 		message = product.getName() + "を購入した";
@@ -418,11 +419,10 @@ public class VendingMachineServer {
 	}
 
 	private static void sendProductListResponse(HttpExchange exchange) throws IOException {
-		ProductDAO dao = new ProductDAO();
-		ArrayList<Product> products = dao.searchAllProducts();
-		Set<Integer> productIdsWithImage = findProductIdsWithImage(products);
+		ensureWebProductsLoaded();
+		Set<Integer> productIdsWithImage = findProductIdsWithImage(webProducts);
 		String html = VendingMachinePage.createProductListPage(
-				products,
+				webProducts,
 				currentMoney,
 				insertedMoney,
 				message,
@@ -455,6 +455,29 @@ public class VendingMachineServer {
 	private static void clearStatusBeforeAction() {
 		statusStartMoney = null;
 		statusStartNicotine = null;
+	}
+
+	private static void ensureWebProductsLoaded() {
+		if (webProducts.isEmpty()) {
+			reloadWebProducts();
+		}
+	}
+
+	private static void reloadWebProducts() {
+		ProductDAO dao = new ProductDAO();
+		webProducts = dao.searchAllProducts();
+	}
+
+	private static Product findWebProduct(int productId) {
+		ensureWebProductsLoaded();
+
+		for (Product product : webProducts) {
+			if (product.getId() == productId) {
+				return product;
+			}
+		}
+
+		return null;
 	}
 
 	private static void rememberInventoryBeforeExplore() {
