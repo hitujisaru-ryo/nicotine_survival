@@ -18,6 +18,7 @@ import bean.Product;
 import dao.ProductDAO;
 import game.GameState;
 import game.GameService;
+import game.InventoryItem;
 
 public class VendingMachineServer {
 
@@ -35,6 +36,7 @@ public class VendingMachineServer {
 	private static boolean showPurchaseResult;
 	private static Integer statusStartMoney;
 	private static Integer statusStartNicotine;
+	private static ArrayList<InventoryItem> inventoryBeforeExplore;
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
@@ -225,6 +227,7 @@ public class VendingMachineServer {
 
 		ProductDAO dao = new ProductDAO();
 		rememberStatusBeforeAction();
+		rememberInventoryBeforeExplore();
 		gameService.explore(gameState, dao.searchAllProducts());
 		showExploreResult = true;
 		sendProductListResponse(exchange);
@@ -431,12 +434,14 @@ public class VendingMachineServer {
 				showSmokeResult,
 				showPurchaseResult,
 				statusStartMoney,
-				statusStartNicotine);
+				statusStartNicotine,
+				inventoryBeforeExplore);
 		showPachinkoResult = false;
 		showExploreResult = false;
 		showSmokeResult = false;
 		showPurchaseResult = false;
 		clearStatusBeforeAction();
+		clearInventoryBeforeExplore();
 		gameState.clearDayAdvanced();
 
 		sendTextResponse(exchange, 200, html);
@@ -450,6 +455,22 @@ public class VendingMachineServer {
 	private static void clearStatusBeforeAction() {
 		statusStartMoney = null;
 		statusStartNicotine = null;
+	}
+
+	private static void rememberInventoryBeforeExplore() {
+		inventoryBeforeExplore = new ArrayList<InventoryItem>();
+
+		for (InventoryItem item : gameState.getInventory()) {
+			inventoryBeforeExplore.add(new InventoryItem(
+					item.getProductId(),
+					item.getProductName(),
+					item.getRemainingPieces(),
+					item.getNicotine()));
+		}
+	}
+
+	private static void clearInventoryBeforeExplore() {
+		inventoryBeforeExplore = null;
 	}
 
 	private static Set<Integer> findProductIdsWithImage(ArrayList<Product> products) {

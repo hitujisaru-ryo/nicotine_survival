@@ -120,7 +120,7 @@ public class GameState {
 	}
 
 	public boolean isNicotineShortage() {
-		return getNicotine() <= 10;
+		return getNicotine() <= 20;
 	}
 
 	public boolean isGameClear() {
