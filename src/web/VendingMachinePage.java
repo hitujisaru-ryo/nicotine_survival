@@ -179,7 +179,7 @@ public class VendingMachinePage {
 			html.append("<div class=\"image-box\">");
 
 			if (productIdsWithImage.contains(product.getId())) {
-				html.append("<img src=\"/images/product_").append(product.getId()).append(".png\" alt=\"")
+				html.append("<img loading=\"lazy\" decoding=\"async\" src=\"/images/product_").append(product.getId()).append(".png\" alt=\"")
 						.append(escapeHtml(product.getName())).append("\">");
 			} else {
 				html.append("No Image");
@@ -728,7 +728,7 @@ public class VendingMachinePage {
 				html.append("<span class=\"inventory-thumb\">");
 
 				if (productIdsWithImage.contains(item.getProductId())) {
-					html.append("<img src=\"/images/product_").append(item.getProductId()).append(".png\" alt=\"")
+					html.append("<img loading=\"lazy\" decoding=\"async\" src=\"/images/product_").append(item.getProductId()).append(".png\" alt=\"")
 							.append(escapeHtml(item.getProductName())).append("\">");
 				} else {
 					html.append("No Image");
@@ -812,7 +812,7 @@ public class VendingMachinePage {
 		html.append("<span class=\"purchased-thumb\">");
 
 		if (productId > 0) {
-			html.append("<img src=\"/images/product_").append(productId).append(".png\" alt=\"")
+			html.append("<img loading=\"lazy\" decoding=\"async\" src=\"/images/product_").append(productId).append(".png\" alt=\"")
 					.append(escapeHtml(productName)).append("\">");
 		} else {
 			html.append("No Image");

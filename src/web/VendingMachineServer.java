@@ -7,11 +7,19 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 
 import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import bean.Product;
@@ -22,8 +30,14 @@ import game.InventoryItem;
 
 public class VendingMachineServer {
 
-	private static final int PORT = 8080;
+	private static final int PORT = 18081;
+	private static final int THREAD_POOL_SIZE = 8;
+	private static final int MAX_REQUEST_BODY_BYTES = 8192;
+	private static final int MAX_REQUESTS_PER_MINUTE = 120;
 	private static final Path IMAGE_DIR = Path.of("images").toAbsolutePath().normalize();
+	private static final ZoneId GMT_ZONE = ZoneId.of("GMT");
+	private static final ConcurrentHashMap<String, ArrayDeque<Long>> requestTimesByIp = new ConcurrentHashMap<String, ArrayDeque<Long>>();
+	private static final ThreadLocal<Integer> currentStatusCode = ThreadLocal.withInitial(() -> 200);
 	private static Integer currentMoney;
 	private static int insertedMoney;
 	private static String message;
@@ -44,27 +58,111 @@ public class VendingMachineServer {
 
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
-		server.createContext("/", VendingMachineServer::handleIndex);
-		server.createContext("/account", VendingMachineServer::handleAccount);
-		server.createContext("/start-game", VendingMachineServer::handleStartGame);
-		server.createContext("/age-check", VendingMachineServer::handleAgeCheck);
-		server.createContext("/set-money", VendingMachineServer::handleSetMoney);
-		server.createContext("/add-money", VendingMachineServer::handleAddMoney);
-		server.createContext("/refund", VendingMachineServer::handleRefund);
-		server.createContext("/purchase", VendingMachineServer::handlePurchase);
-		server.createContext("/explore", VendingMachineServer::handleExplore);
-		server.createContext("/pachinko", VendingMachineServer::handlePachinko);
-		server.createContext("/smoke", VendingMachineServer::handleSmoke);
-		server.createContext("/reset", VendingMachineServer::handleReset);
-		server.createContext("/restart", VendingMachineServer::handleRestart);
-		server.createContext("/quit-smoking", VendingMachineServer::handleQuitSmoking);
-		server.createContext("/images/", VendingMachineServer::handleImage);
-		server.setExecutor(null);
+		createLoggedContext(server, "/", VendingMachineServer::handleIndex);
+		createLoggedContext(server, "/account", VendingMachineServer::handleAccount);
+		createLoggedContext(server, "/start-game", VendingMachineServer::handleStartGame);
+		createLoggedContext(server, "/age-check", VendingMachineServer::handleAgeCheck);
+		createLoggedContext(server, "/set-money", VendingMachineServer::handleSetMoney);
+		createLoggedContext(server, "/add-money", VendingMachineServer::handleAddMoney);
+		createLoggedContext(server, "/refund", VendingMachineServer::handleRefund);
+		createLoggedContext(server, "/purchase", VendingMachineServer::handlePurchase);
+		createLoggedContext(server, "/explore", VendingMachineServer::handleExplore);
+		createLoggedContext(server, "/pachinko", VendingMachineServer::handlePachinko);
+		createLoggedContext(server, "/smoke", VendingMachineServer::handleSmoke);
+		createLoggedContext(server, "/reset", VendingMachineServer::handleReset);
+		createLoggedContext(server, "/restart", VendingMachineServer::handleRestart);
+		createLoggedContext(server, "/quit-smoking", VendingMachineServer::handleQuitSmoking);
+		createLoggedContext(server, "/images/", VendingMachineServer::handleImage);
+		server.setExecutor(Executors.newFixedThreadPool(THREAD_POOL_SIZE));
 		reloadWebProducts();
 		server.start();
 
 		System.out.println("Web自動販売機を起動しました。");
 		System.out.println("http://localhost:" + PORT + "/");
+	}
+
+	private static void createLoggedContext(HttpServer server, String path, HttpHandler handler) {
+		server.createContext(path, exchange -> {
+			long startedAt = System.currentTimeMillis();
+			String clientIp = getClientIp(exchange);
+			currentStatusCode.set(200);
+
+			if (!isRequestAllowed(clientIp)) {
+				sendTextResponse(exchange, 429, "Too Many Requests");
+				logAccess(exchange, clientIp, 429, System.currentTimeMillis() - startedAt);
+				currentStatusCode.remove();
+				return;
+			}
+
+			try {
+				handler.handle(exchange);
+				logAccess(exchange, clientIp, currentStatusCode.get(), System.currentTimeMillis() - startedAt);
+			} catch (IOException e) {
+				logAccess(exchange, clientIp, 500, System.currentTimeMillis() - startedAt);
+				throw e;
+			} finally {
+				currentStatusCode.remove();
+			}
+		});
+	}
+
+	private static boolean isRequestAllowed(String clientIp) {
+		long now = System.currentTimeMillis();
+		long windowStart = now - 60000;
+		ArrayDeque<Long> requestTimes = requestTimesByIp.computeIfAbsent(clientIp, key -> new ArrayDeque<Long>());
+
+		synchronized (requestTimes) {
+			while (!requestTimes.isEmpty() && requestTimes.peekFirst() < windowStart) {
+				requestTimes.removeFirst();
+			}
+
+			if (requestTimes.size() >= MAX_REQUESTS_PER_MINUTE) {
+				return false;
+			}
+
+			requestTimes.addLast(now);
+			return true;
+		}
+	}
+
+	private static String readRequestBody(HttpExchange exchange) throws IOException {
+		String contentLength = exchange.getRequestHeaders().getFirst("Content-Length");
+
+		if (contentLength != null && !contentLength.isBlank()) {
+			try {
+				if (Long.parseLong(contentLength) > MAX_REQUEST_BODY_BYTES) {
+					sendTextResponse(exchange, 413, "Request Entity Too Large");
+					return null;
+				}
+			} catch (NumberFormatException e) {
+				sendTextResponse(exchange, 400, "Bad Request");
+				return null;
+			}
+		}
+
+		byte[] bodyBytes = exchange.getRequestBody().readNBytes(MAX_REQUEST_BODY_BYTES + 1);
+
+		if (bodyBytes.length > MAX_REQUEST_BODY_BYTES) {
+			sendTextResponse(exchange, 413, "Request Entity Too Large");
+			return null;
+		}
+
+		return new String(bodyBytes, StandardCharsets.UTF_8);
+	}
+
+	private static String getClientIp(HttpExchange exchange) {
+		String forwardedFor = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+
+		if (forwardedFor != null && !forwardedFor.isBlank()) {
+			return forwardedFor.split(",", 2)[0].trim();
+		}
+
+		return exchange.getRemoteAddress().getAddress().getHostAddress();
+	}
+
+	private static void logAccess(HttpExchange exchange, String clientIp, int statusCode, long elapsedMillis) {
+		System.out.println(clientIp + " " + exchange.getRequestMethod() + " "
+				+ exchange.getRequestURI().getPath() + " " + statusCode + " " + elapsedMillis + "ms");
 	}
 
 	private static void handleIndex(HttpExchange exchange) throws IOException {
@@ -91,7 +189,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 		String accountName = getFormValue(requestBody, "accountName").trim();
 
 		if (accountName.isEmpty()) {
@@ -110,7 +211,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 		String answer = getFormValue(requestBody, "answer");
 
 		if ("yes".equals(answer)) {
@@ -132,7 +236,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -161,7 +268,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -203,7 +313,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -227,7 +340,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -258,7 +374,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -280,7 +399,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -300,7 +422,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -329,7 +454,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -350,7 +478,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -369,7 +500,10 @@ public class VendingMachineServer {
 			return;
 		}
 
-		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String requestBody = readRequestBody(exchange);
+		if (requestBody == null) {
+			return;
+		}
 
 		if (!isAgeConfirmed(requestBody)) {
 			redirectToIndex(exchange);
@@ -426,13 +560,60 @@ public class VendingMachineServer {
 			return;
 		}
 
-		byte[] responseBytes = Files.readAllBytes(imagePath);
+		long imageSize = Files.size(imagePath);
+		FileTime lastModifiedTime = Files.getLastModifiedTime(imagePath);
+		String etag = createImageEtag(imagePath, imageSize, lastModifiedTime);
+		String lastModified = formatHttpDate(lastModifiedTime.toMillis());
+
 		exchange.getResponseHeaders().set("Content-Type", getImageContentType(imagePath));
-		exchange.sendResponseHeaders(200, responseBytes.length);
+		exchange.getResponseHeaders().set("Cache-Control", "public, max-age=86400");
+		exchange.getResponseHeaders().set("ETag", etag);
+		exchange.getResponseHeaders().set("Last-Modified", lastModified);
+
+		if (isImageCacheValid(exchange, etag, lastModifiedTime)) {
+			currentStatusCode.set(304);
+			exchange.sendResponseHeaders(304, -1);
+			exchange.close();
+			return;
+		}
+
+		currentStatusCode.set(200);
+		exchange.sendResponseHeaders(200, imageSize);
 
 		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(responseBytes);
+			Files.copy(imagePath, os);
 		}
+	}
+
+	private static String createImageEtag(Path imagePath, long imageSize, FileTime lastModifiedTime) {
+		return "\"" + imagePath.getFileName() + "-" + imageSize + "-" + lastModifiedTime.toMillis() + "\"";
+	}
+
+	private static boolean isImageCacheValid(HttpExchange exchange, String etag, FileTime lastModifiedTime) {
+		String ifNoneMatch = exchange.getRequestHeaders().getFirst("If-None-Match");
+
+		if (etag.equals(ifNoneMatch)) {
+			return true;
+		}
+
+		String ifModifiedSince = exchange.getRequestHeaders().getFirst("If-Modified-Since");
+
+		if (ifModifiedSince == null || ifModifiedSince.isBlank()) {
+			return false;
+		}
+
+		try {
+			Instant requestedTime = DateTimeFormatter.RFC_1123_DATE_TIME.parse(ifModifiedSince, Instant::from);
+			long requestedSeconds = requestedTime.getEpochSecond();
+			long imageSeconds = lastModifiedTime.toInstant().getEpochSecond();
+			return imageSeconds <= requestedSeconds;
+		} catch (RuntimeException e) {
+			return false;
+		}
+	}
+
+	private static String formatHttpDate(long epochMillis) {
+		return DateTimeFormatter.RFC_1123_DATE_TIME.format(Instant.ofEpochMilli(epochMillis).atZone(GMT_ZONE));
 	}
 
 	private static String getImageContentType(Path imagePath) {
@@ -453,6 +634,7 @@ public class VendingMachineServer {
 		byte[] responseBytes = response.getBytes(StandardCharsets.UTF_8);
 
 		exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+		currentStatusCode.set(statusCode);
 		exchange.sendResponseHeaders(statusCode, responseBytes.length);
 
 		try (OutputStream os = exchange.getResponseBody()) {
@@ -618,6 +800,7 @@ public class VendingMachineServer {
 
 	private static void redirectToIndex(HttpExchange exchange) throws IOException {
 		exchange.getResponseHeaders().set("Location", "/");
+		currentStatusCode.set(303);
 		exchange.sendResponseHeaders(303, -1);
 		exchange.close();
 	}
